@@ -48,7 +48,7 @@ public class GameController {
             Classical • Fog of War • Duck Chess<br>
             Crazyhouse • Chaturaji (4-player)<br><br>
             Made with Java Swing & ❤️<br>
-            Made by Miklós Bácsi
+            by Miklós Bácsi
             </div></html>
             """);
     }
