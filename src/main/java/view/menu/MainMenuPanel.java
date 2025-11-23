@@ -105,7 +105,6 @@ public class MainMenuPanel extends JPanel {
     }
 
     private void initCenterPanel() {
-        // This panel holds ONLY the names and the boxes
         JPanel mainContainer = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -139,24 +138,52 @@ public class MainMenuPanel extends JPanel {
         boxRow.setOpaque(false);
 
         for (String mode : MODES) {
+            // Create the Name Label
             JLabel nameLabel = new JLabel(mode, SwingConstants.CENTER);
             nameLabel.setForeground(Color.WHITE);
             nameLabel.setFont(new Font("Arial", Font.BOLD, 26));
             nameRow.add(nameLabel);
 
-            JPanel box = new JPanel();
+            // Load the Texture Image
+            String filename = "/game-mode/" + mode.replace(" ", "-") + ".png";
+            BufferedImage textureImg = null;
+            try {
+                URL url = getClass().getResource(filename);
+                if (url != null) {
+                    textureImg = ImageIO.read(url);
+                } else {
+                    System.err.println("Texture not found: " + filename);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            final BufferedImage finalTexture = textureImg;
+
+            // Create the Box with Custom Image Painting
+            JPanel box = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    if (finalTexture != null) {
+                        Graphics2D g2d = (Graphics2D) g;
+                        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                        // Draw image stretched to fit the 200x200 box
+                        g2d.drawImage(finalTexture, 0, 0, getWidth(), getHeight(), this);
+                    }
+                }
+            };
+
+            // Set standard properties
             box.setPreferredSize(new Dimension(200, 200));
             box.setMaximumSize(new Dimension(200, 200));
-            box.setBackground(getColorForMode(mode));
             box.setBorder(BorderFactory.createRaisedBevelBorder());
             box.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             box.setToolTipText("Start " + mode);
 
-            String selectedMode = mode;
             box.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    onStartGame.accept(selectedMode);
+                    onStartGame.accept(mode);
                 }
             });
             boxRow.add(box);
