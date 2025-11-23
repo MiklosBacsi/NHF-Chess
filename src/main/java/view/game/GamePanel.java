@@ -7,10 +7,8 @@ public class GamePanel extends JPanel {
 
     private final BoardPanel boardPanel;
     private final JLabel gameModeLabel;
-    private final Runnable onBack;
 
     public GamePanel(Runnable onBack) {
-        this.onBack = onBack;
         setLayout(new BorderLayout());
         setBackground(new Color(60, 60, 60));
 
@@ -50,5 +48,9 @@ public class GamePanel extends JPanel {
 
     public void setGameModeText(String text) {
         gameModeLabel.setText(text);
+    }
+
+    public void setBoardTheme(BoardTheme theme) {
+        boardPanel.setTheme(theme);
     }
 }

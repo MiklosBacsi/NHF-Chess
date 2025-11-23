@@ -1,6 +1,7 @@
 package controller;
 
 import view.MainFrame;
+import view.game.BoardTheme;
 
 import javax.swing.*;
 
@@ -33,6 +34,10 @@ public class GameController {
 
     public void showScene(String scene) {
         view.showCard(scene);
+    }
+
+    public void setTheme(BoardTheme theme) {
+        view.setBoardTheme(theme);
     }
 
     // --- Dialog Logic ---

@@ -5,13 +5,16 @@ import java.awt.*;
 
 public class BoardPanel extends JPanel {
 
-    // Classic Wood Colors
-    private final Color lightSquareColor = new Color(240, 217, 181);
-    private final Color darkSquareColor = new Color(181, 136, 99);
+    private BoardTheme currentTheme = BoardTheme.BROWN;
 
     public BoardPanel() {
         // Transparent so the dark grey background of GamePanel shows on the sides
         setOpaque(false);
+    }
+
+    public void setTheme(BoardTheme theme) {
+        this.currentTheme = theme;
+        repaint();
     }
 
     @Override
@@ -43,9 +46,9 @@ public class BoardPanel extends JPanel {
 
                 // Determine color
                 if ((row + col) % 2 == 0) {
-                    g2d.setColor(lightSquareColor);
+                    g2d.setColor(currentTheme.light());
                 } else {
-                    g2d.setColor(darkSquareColor);
+                    g2d.setColor(currentTheme.dark());
                 }
 
                 // Draw the square

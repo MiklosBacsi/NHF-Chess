@@ -1,6 +1,7 @@
 package view;
 
 import controller.GameController;
+import view.game.BoardTheme;
 import view.game.GamePanel;
 import view.history.HistoryPanel;
 import view.menu.MainMenuPanel;
@@ -84,11 +85,28 @@ public class MainFrame extends JFrame {
         gameMenu.add(mainMenuItem);
         menuBar.add(gameMenu);
 
-        // View → Game History
+        // View → Theme + Game History
         JMenu viewMenu = new JMenu("View");
+
         JMenuItem historyItem = new JMenuItem("Game History");
         historyItem.addActionListener(e -> controller.showScene(GameController.HISTORY));
         viewMenu.add(historyItem);
+
+        JMenu themeMenu = new JMenu("Theme");
+        ButtonGroup themeGroup = new ButtonGroup();
+        for (BoardTheme theme : BoardTheme.ALL_THEMES) {
+            JRadioButtonMenuItem themeItem = new JRadioButtonMenuItem(theme.name());
+            // Select Brown by default
+            if (theme == BoardTheme.BROWN) themeItem.setSelected(true);
+
+            themeItem.addActionListener(e -> controller.setTheme(theme));
+
+            themeGroup.add(themeItem);
+            themeMenu.add(themeItem);
+        }
+        viewMenu.add(themeMenu);
+        viewMenu.addSeparator();
+
         menuBar.add(viewMenu);
 
         // Help → About + How to Play
@@ -117,5 +135,9 @@ public class MainFrame extends JFrame {
         menuBar.add(helpMenu);
 
         return menuBar;
+    }
+
+    public void setBoardTheme(BoardTheme theme) {
+        gamePanel.setBoardTheme(theme);
     }
 }
