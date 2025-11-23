@@ -95,7 +95,7 @@ public class MainFrame extends JFrame {
         JMenu themeMenu = new JMenu("Theme");
         ButtonGroup themeGroup = new ButtonGroup();
         for (BoardTheme theme : BoardTheme.ALL_THEMES) {
-            JRadioButtonMenuItem themeItem = new JRadioButtonMenuItem(theme.name());
+            JRadioButtonMenuItem themeItem = new JRadioButtonMenuItem(theme.getName());
             // Select Brown by default
             if (theme == BoardTheme.BROWN) themeItem.setSelected(true);
 

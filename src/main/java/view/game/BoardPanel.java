@@ -7,6 +7,8 @@ public class BoardPanel extends JPanel {
 
     private BoardTheme currentTheme = BoardTheme.BROWN;
 
+    private static final int BOARD_PADDING = 20;
+
     public BoardPanel() {
         // Transparent so the dark grey background of GamePanel shows on the sides
         setOpaque(false);
@@ -27,16 +29,18 @@ public class BoardPanel extends JPanel {
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
         // Calculate available space
-        int w = getWidth();
-        int h = getHeight();
+        int width = getWidth();
+        int height = getHeight();
+        int minimumDimension = Math.min(width, height) - (BOARD_PADDING * 2);
+        if (minimumDimension < 0) minimumDimension = 0;
 
         // Calculate Square Size dynamically, and take the smaller dimension so the board always fits inside the window
-        int squareSize = Math.min(w, h) / 8;
+        int squareSize = minimumDimension / 8;
 
         // Calculate centering (to keep board in middle)
         int boardPixelSize = squareSize * 8;
-        int startX = (w - boardPixelSize) / 2;
-        int startY = (h - boardPixelSize) / 2;
+        int startX = (width - boardPixelSize) / 2;
+        int startY = (height - boardPixelSize) / 2;
 
         // Draw the Board
         for (int row = 0; row < 8; row++) {
@@ -46,9 +50,9 @@ public class BoardPanel extends JPanel {
 
                 // Determine color
                 if ((row + col) % 2 == 0) {
-                    g2d.setColor(currentTheme.light());
+                    g2d.setColor(currentTheme.getLight());
                 } else {
-                    g2d.setColor(currentTheme.dark());
+                    g2d.setColor(currentTheme.getDark());
                 }
 
                 // Draw the square

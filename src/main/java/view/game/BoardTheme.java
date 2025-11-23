@@ -14,15 +14,15 @@ public class BoardTheme {
         this.dark = dark;
     }
 
-    public String name() {
+    public String getName() {
         return name;
     }
 
-    public Color light() {
+    public Color getLight() {
         return light;
     }
 
-    public Color dark() {
+    public Color getDark() {
         return dark;
     }
 
