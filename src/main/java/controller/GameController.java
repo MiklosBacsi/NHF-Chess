@@ -120,6 +120,11 @@ public class GameController {
     }
 
     public String getClockGuide() {
-        return "<h2>Chess Clock Guide</h2><p>Explains time controls: Bullet, Blitz, Rapid, increment, etc.</p>";
+        return "<h2>Chess Clock Guide</h2><p>Each player is given the equal amount of time at the start of the game, and only the active player's time is decreasing. " +
+            "Before beginning the match, you must choose from a chess clock preset or you set a custom one yourself.</p>" +
+            "<p><strong>minutes | seconds</strong> or just <strong>minutes</strong><br>" +
+            "Minutes: integer between 1 and 30, the initial time.<br>" +
+            "Seconds: integer between 0 and 30, that many seconds are added to your time after making a move.</p>" +
+            "<p>If your time runs out, you lose/die.</p>";
     }
 }

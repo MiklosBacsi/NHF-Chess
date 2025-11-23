@@ -12,7 +12,7 @@ public class MainFrame extends JFrame {
 
     private final GameController controller;
     private final JPanel cards;
-    private GamePanel gamePanel;
+    private final GamePanel gamePanel;
 
     public MainFrame(GameController controller) {
         this.controller = controller;
@@ -25,14 +25,14 @@ public class MainFrame extends JFrame {
         // Initialize Card Layout
         cards = new JPanel(new CardLayout());
 
-        // Create Screens
-        // 1. Menu: Passes the "Start Game" action to controller
+        // ==== Create Screens ====
+        // Menu: Passes the "Start Game" action to controller
         MainMenuPanel menuPanel = new MainMenuPanel(GameController.MODES, controller::startNewGame);
 
-        // 2. Game: Passes the "Back" action to controller
+        // Game: Passes the "Back" action to controller
         gamePanel = new GamePanel(() -> controller.showScene(GameController.MENU));
 
-        // 3. History: Passes the "Back" action to controller
+        // History: Passes the "Back" action to controller
         HistoryPanel historyPanel = new HistoryPanel(() -> controller.showScene(GameController.MENU));
 
         // Add to Cards
@@ -49,7 +49,7 @@ public class MainFrame extends JFrame {
 
     // Updates the text on the game screen
     public void updateGameModeLabel(String mode) {
-        gamePanel.setGameModeText("Current Mode: " + mode);
+        gamePanel.setGameModeText("Game Mode: " + mode);
     }
 
     // Switches the view

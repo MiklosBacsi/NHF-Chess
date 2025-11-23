@@ -5,49 +5,50 @@ import java.awt.*;
 
 public class GamePanel extends JPanel {
 
-    private JLabel gameModeLabel;
+    private final BoardPanel boardPanel;
+    private final JLabel gameModeLabel;
     private final Runnable onBack;
 
     public GamePanel(Runnable onBack) {
         this.onBack = onBack;
         setLayout(new BorderLayout());
-        setBackground(new Color(25, 25, 40));
+        setBackground(new Color(60, 60, 60));
 
-        JLabel title = new JLabel("CHESS GAME", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 48));
-        title.setForeground(new Color(100, 200, 255));
-        title.setBorder(BorderFactory.createEmptyBorder(40, 0, 20, 0));
-        add(title, BorderLayout.NORTH);
+        // --- TOP: Navigation & Title ---
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(false);
+        // Add padding so the button isn't glued to the screen edge
+        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        gameModeLabel = new JLabel("Current Mode: No mode selected", SwingConstants.CENTER);
-        gameModeLabel.setFont(new Font("Arial", Font.BOLD, 32));
-        gameModeLabel.setForeground(Color.WHITE);
+        // Define a fixed size for the navigation elements
+        Dimension navSize = new Dimension(160, 40);
 
-        JPanel center = new JPanel(new GridBagLayout());
-        center.setOpaque(false);
-        center.add(gameModeLabel);
-        add(center, BorderLayout.CENTER);
+        // Create the menu button
+        JButton backButton = new JButton("Back to Main Menu");
+        backButton.setPreferredSize(navSize); // Set the fixed size
+        backButton.setFocusPainted(false);
+        backButton.addActionListener(e -> onBack.run());
+        topPanel.add(backButton, BorderLayout.WEST);
 
-        add(createBackButton(), BorderLayout.SOUTH);
+        // Create the Top Center Label
+        gameModeLabel = new JLabel("Classical Chess", SwingConstants.CENTER);
+        gameModeLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        gameModeLabel.setForeground(Color.LIGHT_GRAY);
+        gameModeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        topPanel.add(gameModeLabel, BorderLayout.CENTER);
+
+        // An invisible placeholder, which forces the BorderLayout.CENTER to be perfectly in the middle of the window.
+        Component dummyRight = Box.createRigidArea(navSize);
+        topPanel.add(dummyRight, BorderLayout.EAST);
+
+        add(topPanel, BorderLayout.NORTH);
+
+        // --- CENTER: The Chess Board ---
+        boardPanel = new BoardPanel();
+        add(boardPanel, BorderLayout.CENTER);
     }
 
     public void setGameModeText(String text) {
         gameModeLabel.setText(text);
-    }
-
-    private JComponent createBackButton() {
-        JButton btn = new JButton("Back to Main Menu");
-        btn.setFont(new Font("Arial", Font.BOLD, 20));
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(new Color(100, 100, 150));
-        btn.setPreferredSize(new Dimension(300, 60));
-        btn.setFocusPainted(false);
-        btn.addActionListener(e -> onBack.run());
-
-        JPanel wrapper = new JPanel(new FlowLayout());
-        wrapper.setBorder(BorderFactory.createEmptyBorder(20, 0, 30, 0));
-        wrapper.setBackground(new Color(25, 25, 40));
-        wrapper.add(btn);
-        return wrapper;
     }
 }
