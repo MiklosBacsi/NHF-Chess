@@ -1,8 +1,7 @@
 package view.game;
 
-import model.Board;
-import model.Piece;
-import model.Move;
+import model.*;
+import model.rules.ClassicalVariant;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -27,27 +26,60 @@ public class BoardPanel extends JPanel {
     private int dragX, dragY; // Current pixel coordinates of the mouse
     private int dragOffsetX, dragOffsetY; // To keep the mouse relative to the piece corner
     private Point hoverSquare = null; // Stores x=col, y=row of the square under mouse
-    private final Color dragHighlightColor = new Color(255, 255, 0, 128); // Source (Yellow)
-    private final Color targetHighlightColor = new Color(255, 255, 255, 100); // Target (White overlay)
-    private final Color moveHintColor = new Color(0, 0, 0, 50); // Dark dot for valid squares
     private List<Move> currentLegalMoves = null; // All the squares a piece can legally move to
 
     // --- Visuals ---
     private BoardTheme currentTheme = BoardTheme.BROWN;
     private static final int BOARD_PADDING = 20;
+    private final Color moveHighlightColor = new Color(255, 255, 0, 96); // Source (Yellow)
+    private final Color targetHighlightColor = new Color(255, 255, 255, 100); // Target (White overlay)
+    private final Color moveHintColor = new Color(0, 0, 0, 50); // Dark dot for valid squares
+    private final Color checkHighlightColor = new Color(255, 0, 0, 128);
 
     // Cached calculation values to share between paint() and mouse listeners
     private int startX, startY, squareSize;
+
+    private GameVariant gameRules; // The Strategy
 
     public BoardPanel() {
         this.board = new Board();
         setOpaque(false);
         loadResources();
 
+        // Default startup
+        this.gameRules = new ClassicalVariant();
+
         // Initialize Mouse Listeners
         MouseAdapter mouseHandler = new DragController();
         addMouseListener(mouseHandler);
         addMouseMotionListener(mouseHandler);
+    }
+
+    public void setupGame(String mode) {
+        // Reset Model
+        board.resetBoard();
+
+        // Select Rules Strategy
+        // We will add the other classes later, for now we map them!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+        switch (mode) {
+            case "Classical":
+                this.gameRules = new ClassicalVariant();
+                break;
+            // Placeholders for future:
+            // case "Fog of War": this.gameRules = new FogOfWarVariant(); break;
+            // case "Duck Chess": this.gameRules = new DuckChessVariant(); break;
+            default:
+                this.gameRules = new ClassicalVariant(); // Fallback
+                break;
+        }
+
+        // Clear UI state
+        draggedPiece = null;
+        hoverSquare = null;
+        currentLegalMoves = null;
+
+        // Redraw
+        repaint();
     }
 
     private void loadResources() {
@@ -107,6 +139,15 @@ public class BoardPanel extends JPanel {
         this.startX = (width - boardPixelSize) / 2;
         this.startY = (height - boardPixelSize) / 2;
 
+        boolean whiteInCheck = gameRules.isCheck(board, PieceColor.WHITE);
+        boolean blackInCheck = gameRules.isCheck(board, PieceColor.BLACK);
+
+        // We need to know WHERE the kings are to highlight them
+        Piece whiteKing = board.findKing(PieceColor.WHITE);
+        Piece blackKing = board.findKing(PieceColor.BLACK);
+
+        Move lastMove = board.getLastMove();
+
         // Draw the Board & Pieces
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
@@ -119,17 +160,42 @@ public class BoardPanel extends JPanel {
                 } else {
                     g2d.setColor(currentTheme.getDark());
                 }
-                g2d.fillRect(x, y, squareSize, squareSize); // Draw the square
+
+                // Draw the square (Background)
+                g2d.fillRect(x, y, squareSize, squareSize);
+
+                // Draw Last Move Highlight (only draw if NOT dragging, and there is a history)
+                if (draggedPiece == null && lastMove != null) {
+                    boolean isStart = (lastMove.startRow() == row && lastMove.startCol() == col);
+                    boolean isEnd = (lastMove.endRow() == row && lastMove.endCol() == col);
+
+                    if (isStart || isEnd) {
+                        g2d.setColor(moveHighlightColor); // Reusing the Yellow
+                        g2d.fillRect(x, y, squareSize, squareSize);
+                    }
+                }
 
                 // Draw Source Highlight (if this is the start square of the dragged piece)
                 if (draggedPiece != null && draggedPiece.getRow() == row && draggedPiece.getCol() == col) {
-                    g2d.setColor(dragHighlightColor);
+                    g2d.setColor(moveHighlightColor);
                     g2d.fillRect(x, y, squareSize, squareSize);
                 }
 
                 // Draw Target Highlight (White)
                 if (draggedPiece != null && hoverSquare != null && hoverSquare.y == row && hoverSquare.x == col) {
                     g2d.setColor(targetHighlightColor);
+                    g2d.fillRect(x, y, squareSize, squareSize);
+                }
+
+                // --- Check Highlight (Red) ---
+                // If White is in Check AND this is the White King's square -> Paint Red
+                if (whiteInCheck && whiteKing != null && whiteKing.getRow() == row && whiteKing.getCol() == col) {
+                    g2d.setColor(checkHighlightColor);
+                    g2d.fillRect(x, y, squareSize, squareSize);
+                }
+                // If Black is in Check AND this is the Black King's square -> Paint Red
+                if (blackInCheck && blackKing != null && blackKing.getRow() == row && blackKing.getCol() == col) {
+                    g2d.setColor(checkHighlightColor);
                     g2d.fillRect(x, y, squareSize, squareSize);
                 }
 
@@ -228,7 +294,7 @@ public class BoardPanel extends JPanel {
                 if (clickedPiece != null) {
                     draggedPiece = clickedPiece;
                     hoverSquare = coords;
-                    currentLegalMoves = draggedPiece.getPseudoLegalMoves(board);
+                    currentLegalMoves = gameRules.getLegalMoves(board, draggedPiece);
 
                     dragX = e.getX();
                     dragY = e.getY();
@@ -267,16 +333,17 @@ public class BoardPanel extends JPanel {
                     int targetRow = coords.y;
                     int targetCol = coords.x;
 
-                    // Check if the move is Geometrically Possible
-                    List<Move> legalMoves = draggedPiece.getPseudoLegalMoves(board);
-
                     boolean isValid = false;
-                    for (Move m : legalMoves) {
-                        if (m.endRow() == targetRow && m.endCol() == targetCol) {
-                            isValid = true;
-                            // Execute Move in Model
-                            board.executeMove(m);
-                            break;
+
+                    // Check if the move is Possible
+                    if (currentLegalMoves != null) {
+                        for (Move m : currentLegalMoves) {
+                            if (m.endRow() == targetRow && m.endCol() == targetCol) {
+                                isValid = true;
+                                // Execute Move in Model
+                                board.executeMove(m);
+                                break;
+                            }
                         }
                     }
 
@@ -288,6 +355,7 @@ public class BoardPanel extends JPanel {
                 // Reset Drag State
                 draggedPiece = null;
                 hoverSquare = null;
+                currentLegalMoves = null; // Clear list after use
 
                 repaint();
             }

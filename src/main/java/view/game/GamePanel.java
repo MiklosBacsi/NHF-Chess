@@ -53,4 +53,12 @@ public class GamePanel extends JPanel {
     public void setBoardTheme(BoardTheme theme) {
         boardPanel.setTheme(theme);
     }
+
+    public void startNewGame(String modeName) {
+        // Update Title text
+        setGameModeText("Current Mode: " + modeName);
+
+        // 2. Reset Board and Rules
+        boardPanel.setupGame(modeName);
+    }
 }

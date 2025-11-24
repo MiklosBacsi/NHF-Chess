@@ -56,7 +56,7 @@ public abstract class Piece {
                     // Occupied square
                     if (targetPiece.getColor() != this.color) {
                         // Capture! Add move, but Stop sliding
-                        moves.add(new Move(this, row, col, targetRow, targetCol));
+                        moves.add(new Move(this, row, col, targetRow, targetCol, targetPiece));
                     }
                     // If friendly piece, just Stop sliding
                     break;
@@ -80,9 +80,13 @@ public abstract class Piece {
             if (isValidSquare(targetRow, targetCol)) {
                 Piece targetPiece = board.getPiece(targetRow, targetCol);
 
-                // Move if empty OR capture enemy
-                if (targetPiece == null || targetPiece.getColor() != this.color) {
+                if (targetPiece == null) {
+                    // Empty square: Normal Move
                     moves.add(new Move(this, row, col, targetRow, targetCol));
+                } else if (targetPiece.getColor() != this.color) {
+                    // Enemy piece: Capture Move!
+                    // IMPORTANT: We must pass 'targetPiece' to the Move constructor
+                    moves.add(new Move(this, row, col, targetRow, targetCol, targetPiece));
                 }
             }
         }
@@ -113,4 +117,5 @@ public abstract class Piece {
     public PieceColor getColor() { return color; }
     public PieceType getType() { return type; }
     public boolean hasMoved() { return hasMoved; }
+    public void setHasMoved(boolean hasMoved) { this.hasMoved = hasMoved; }
 }

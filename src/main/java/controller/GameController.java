@@ -28,7 +28,11 @@ public class GameController {
 
     public void startNewGame(String mode) {
         System.out.println("Starting new game: " + mode);
-        view.updateGameModeLabel(mode);
+
+        // Reset the logic and view state
+        view.startNewGame(mode);
+
+        // Show the screen
         showScene(GAME);
     }
 

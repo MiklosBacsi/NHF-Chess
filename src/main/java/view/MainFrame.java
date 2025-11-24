@@ -48,9 +48,8 @@ public class MainFrame extends JFrame {
         setMinimumSize(getSize());
     }
 
-    // Updates the text on the game screen
-    public void updateGameModeLabel(String mode) {
-        gamePanel.setGameModeText("Game Mode: " + mode);
+    public void startNewGame(String mode) {
+        gamePanel.startNewGame(mode);
     }
 
     // Switches the view

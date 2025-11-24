@@ -34,8 +34,9 @@ public class Pawn extends Piece {
         for (int captureCol : captureCols) {
             if (isValidSquare(forwardRow, captureCol)) {
                 Piece target = board.getPiece(forwardRow, captureCol);
+
                 if (target != null && target.getColor() != this.color) {
-                    moves.add(new Move(this, row, col, forwardRow, captureCol));
+                    moves.add(new Move(this, row, col, forwardRow, captureCol, target));
                 }
             }
         }
