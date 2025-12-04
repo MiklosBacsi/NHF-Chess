@@ -40,6 +40,7 @@ public class BoardPanel extends JPanel {
     private final Color targetHighlightColor = new Color(255, 255, 255, 100); // Target (White overlay)
     private final Color moveHintColor = new Color(0, 0, 0, 50); // Dark dot for valid squares
     private final Color checkHighlightColor = new Color(255, 0, 0, 128);
+    private PieceColor viewPerspective = PieceColor.WHITE; // Determines which side is at the bottom of the screen
 
     // Cached calculation values to share between paint() and mouse listeners
     private int startX, startY, squareSize;
@@ -65,7 +66,7 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * It creates a new game with the chosen variant
+     * It creates a new game with the chosen variant.
      * @param mode determines the type of the game variant
      */
     public void setupGame(String mode) {
@@ -85,6 +86,8 @@ public class BoardPanel extends JPanel {
                 this.gameRules = new ClassicalVariant(); // Fallback
                 break;
         }
+
+        this.viewPerspective = PieceColor.WHITE;
 
         // Clear UI state
         draggedPiece = null;
@@ -175,8 +178,12 @@ public class BoardPanel extends JPanel {
         // Draw the Board & Pieces
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                int x = startX + (col * squareSize);
-                int y = startY + (row * squareSize);
+                // TRANSFORM TO VISUAL COORDS
+                int visualRow = toVisualRow(row);
+                int visualCol = toVisualCol(col);
+
+                int x = startX + (visualCol * squareSize);
+                int y = startY + (visualRow * squareSize);
 
                 // Determine color of square
                 if ((row + col) % 2 == 0) {
@@ -187,6 +194,9 @@ public class BoardPanel extends JPanel {
 
                 // Draw the square (Background)
                 g2d.fillRect(x, y, squareSize, squareSize);
+
+
+                // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
 
                 // Draw Last Move Highlight (only draw if NOT dragging, and there is a history)
                 if (draggedPiece == null && lastMove != null) {
@@ -223,7 +233,7 @@ public class BoardPanel extends JPanel {
                     g2d.fillRect(x, y, squareSize, squareSize);
                 }
 
-                // Draw Piece (if it's not being dragged)
+                // --- Draw Piece (if it's not being dragged) ---
                 Piece piece = board.getPiece(row, col);
                 if (piece != null && piece != draggedPiece) {
                     drawPiece(g2d, piece, x, y);
@@ -250,8 +260,12 @@ public class BoardPanel extends JPanel {
             int ringOffset = (int) (ringThickness / 2);
 
             for (Move move : currentLegalMoves) {
-                int gx = startX + (move.endCol() * squareSize);
-                int gy = startY + (move.endRow() * squareSize);
+                // TRANSFORM DOT POSITION
+                int visualRow = toVisualRow(move.endRow());
+                int visualCol = toVisualCol(move.endCol());
+
+                int gx = startX + (visualCol * squareSize);
+                int gy = startY + (visualRow * squareSize);
 
                 // Check: Is there a piece at the target square?
                 Piece target = board.getPiece(move.endRow(), move.endCol());
@@ -298,20 +312,85 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * Converts screen pixel coordinate into a chess board one
-     * @param x
-     * @param y
-     * @return
+     * Converts screen pixel coordinate into a chess board one while applying inverse transformation.
+     * @param x board's visual x coordinate
+     * @param y board's visual y coordinate
+     * @return models's coordinate
      */
     private Point getBoardCoordinates(int x, int y) {
         if (squareSize == 0) return null;
-        int col = (x - startX) / squareSize;
-        int row = (y - startY) / squareSize;
-        if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-            return new Point(col, row);
+
+        // Calculate which Visual Square was clicked
+        int visualCol = (x - startX) / squareSize;
+        int visualRow = (y - startY) / squareSize;
+
+        // Validate bounds
+        if (visualCol >= 0 && visualCol < 8 && visualRow >= 0 && visualRow < 8) {
+            // Convert to Model Coordinates
+            int modelRow = toModelRow(visualRow);
+            int modelCol = toModelCol(visualCol);
+            return new Point(modelCol, modelRow);
         }
         // Outside the board
         return null;
+    }
+
+    /**
+     * Converts Model Row (0..7) to Visual Row (0..7) based on perspective.
+     * If WHITE view: Row 0 is top, Row 7 is bottom (Standard).
+     * If BLACK view: Row 0 is bottom, Row 7 is top (Rotated by 180 degrees).
+     */
+    private int toVisualRow(int modelRow) {
+        if (viewPerspective == PieceColor.WHITE) {
+            return modelRow;
+        } else {
+            return 7 - modelRow;
+        }
+    }
+
+    /**
+     * Converts Model Column (0..7) to Visual Column (0..7) based on perspective.
+     * If WHITE view: Column 0 is left, Column 7 is right (Standard).
+     * If BLACK view: Column right is bottom, Column 7 is left (Rotated by 180 degrees).
+     * @param modelCol model column index
+     * @return visual column index
+     */
+    private int toVisualCol(int modelCol) {
+        if (viewPerspective == PieceColor.WHITE) {
+            return modelCol;
+        } else {
+            return 7 - modelCol;
+        }
+    }
+
+    /**
+     * Converts Visual coordinates (what we clicked) back to Model coordinates.
+     * For 180-degree rotation, the math is identical (X = 7 - X),
+     * but we separate it in case we add 90-degree rotation.
+     * @param visualRow visual row index
+     * @return model row index
+     */
+    private int toModelRow(int visualRow) {
+        if (viewPerspective == PieceColor.WHITE) {
+            return visualRow;
+        } else {
+            return 7 - visualRow;
+        }
+    }
+
+    /**
+     * Converts Visual coordinates (what we clicked) back to Model coordinates.
+     * For 180-degree rotation, the math is identical (X = 7 - X),
+     * but we separate it in case we add 90-degree rotation.
+     * @param visualCol visual column index
+     * @return model column index
+     */
+    private int toModelCol(int visualCol) {
+        if (viewPerspective == PieceColor.WHITE) {
+            return visualCol;
+        } else {
+            return 7 - visualCol;
+        }
     }
 
 
@@ -334,6 +413,13 @@ public class BoardPanel extends JPanel {
 
                 // Checks if another piece is already there
                 if (clickedPiece != null) {
+
+                    // Turn Validation
+                    if (clickedPiece.getColor() != board.getCurrentPlayer()) {
+                        System.out.println("Not your turn!");
+                        return; // Ignore click
+                    }
+
                     draggedPiece = clickedPiece;
                     hoverSquare = coords;
                     currentLegalMoves = gameRules.getLegalMoves(board, draggedPiece);
@@ -341,9 +427,11 @@ public class BoardPanel extends JPanel {
                     dragX = e.getX();
                     dragY = e.getY();
 
-                    // Calculate offset so piece doesn't jump to top-left of mouse
-                    int pieceX = startX + (coords.x * squareSize);
-                    int pieceY = startY + (coords.y * squareSize);
+                    // Calculate visual offset (so piece doesn't jump to top-left of mouse)
+                    int visualRow = toVisualRow(coords.y);
+                    int visualCol = toVisualCol(coords.x);
+                    int pieceX = startX + (visualCol * squareSize);
+                    int pieceY = startY + (visualRow * squareSize);
                     dragOffsetX = e.getX() - pieceX;
                     dragOffsetY = e.getY() - pieceY;
 
@@ -392,6 +480,13 @@ public class BoardPanel extends JPanel {
                                 isValid = true;
                                 // Execute Move in Model
                                 board.executeMove(m);
+
+                                // Switch Turn
+                                board.switchTurn();
+
+                                // Rotate view to match the new player
+                                viewPerspective = board.getCurrentPlayer();
+
                                 break;
                             }
                         }
