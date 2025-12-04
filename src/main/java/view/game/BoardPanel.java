@@ -487,6 +487,24 @@ public class BoardPanel extends JPanel {
                                 // Rotate view to match the new player
                                 viewPerspective = board.getCurrentPlayer();
 
+                                // --- Check Game Over Conditions ---
+
+                                // We check the status of the player whose turn it is NOW.
+                                PieceColor activePlayer = board.getCurrentPlayer();
+
+                                if (gameRules.isCheckmate(board, activePlayer)) {
+                                    // If active player is mated, the previous player won
+                                    PieceColor winner = activePlayer.next();
+                                    System.out.println("---------------------------------------");
+                                    System.out.println("CHECKMATE! " + winner + " wins!");
+                                    System.out.println("---------------------------------------");
+                                }
+                                else if (gameRules.isStalemate(board, activePlayer)) {
+                                    System.out.println("---------------------------------------");
+                                    System.out.println("STALEMATE! The game is a draw.");
+                                    System.out.println("---------------------------------------");
+                                }
+
                                 break;
                             }
                         }
