@@ -5,6 +5,10 @@ import view.game.BoardTheme;
 
 import javax.swing.*;
 
+/**
+ * This class is responsible for controlling the program
+ * @author Miklós Bácsi
+ */
 public class GameController {
 
     public static final String MENU = "MENU";
@@ -16,16 +20,26 @@ public class GameController {
 
     private MainFrame view;
 
+    /**
+     * Default constructor
+     */
     public GameController() {
         // View is initialized lazily or via setView to avoid circular constructor issues
         // but here we can instantiate the view directly
     }
 
+    /**
+     * Starts the main window
+     */
     public void start() {
         this.view = new MainFrame(this);
         this.view.setVisible(true);
     }
 
+    /**
+     * Starts a new game with the chosen game variant
+     * @param mode chosen game variant
+     */
     public void startNewGame(String mode) {
         System.out.println("Starting new game: " + mode);
 
@@ -36,16 +50,28 @@ public class GameController {
         showScene(GAME);
     }
 
+    /**
+     *
+     * @param scene
+     */
     public void showScene(String scene) {
         view.showCard(scene);
     }
 
+    /**
+     * Sets the theme to the chosen one
+     * @param theme chosen theme
+     */
     public void setTheme(BoardTheme theme) {
         view.setBoardTheme(theme);
     }
 
+
     // --- Dialog Logic ---
 
+    /**
+     * Opens up an about page of the program
+     */
     public void openAboutDialog() {
         openHelpDialog("About Chess Variants", """
             <html><div style='text-align:center;padding:30px;font-family:Arial'>
@@ -62,6 +88,11 @@ public class GameController {
             """);
     }
 
+    /**
+     * Opens up a dialog window with the given title and the corresponding content
+     * @param index represents the rules of the variant
+     * @param title title of the variant
+     */
     public void openRulesDialog(int index, String title) {
         String content = switch (index) {
             case 0 -> getClassicalRules();
@@ -73,6 +104,11 @@ public class GameController {
         openHelpDialog(title + " Rules", content);
     }
 
+    /**
+     * Opens up a dialog window with the given title and content.
+     * @param title title of the dialog
+     * @param content content of the dialog
+     */
     public void openHelpDialog(String title, String content) {
         // Pass the view as the parent component
         JDialog dialog = new JDialog(view, title, false);
@@ -92,24 +128,40 @@ public class GameController {
 
     // --- Rules Content (Model Data) ---
 
+    /**
+     * @return rules for playing Classical Chess (HTML format)
+     */
     public String getClassicalRules() {
         return "<h2>Classical Chess</h2><p>Standard international chess rules as defined by FIDE (International Chess Federation).</p>";
     }
 
+    /**
+     * @return guide for playing the Fog of War variant (HTML format)
+     */
     public String getFogOfWarRules() {
         return "<h2>Fog of War</h2><p>You can only see squares occupied or attacked by your pieces. " +
             "There is no chess, so kings can also be captured. In this case, the game ends.</p>";
     }
 
+    /**
+     * @return guide for playing the Duck Chess variant (HTML format)
+     */
     public String getDuckChessRules() {
         return "<h2>Duck Chess</h2><p>After each move, a neutral duck is placed on an empty square, which blocks that square. " +
             "The duck cannot be captured or moved through, and it has to be placed on a different square, than it previously has been.</p>";
     }
+
+    /**
+     * @return guide for playing the Crazyhouse variant (HTML format)
+     */
     public String getCrazyhouseRules() {
         return "<h2>Crazyhouse</h2><p>When capturing a piece of the enemy, it moves into our container. " +
             "Instead of making a move, you can choose to take a piece out of the container, and drop it back onto the board, in an empty square, but now as your piece.</p>";
     }
 
+    /**
+     * @return guide for playing the Chaturaji variant (HTML format)
+     */
     public String getChaturajiRules() {
         return "<h2>Chaturaji</h2><p>Ancient 4-player Indian chess variant in which the goal is to collect to most points.</p>" +
             "<p>Each player has 4 pawns (do not have initial double-step), a king, a bishop, a knight, and a sail boat. The sail boat moves the same way as a rock, but cannot castle.<br>" +
@@ -128,6 +180,9 @@ public class GameController {
             "The player with the most points wins, even if his king has been captured, or he resigned.</p>";
     }
 
+    /**
+     * @return guide for using the chess clock (HTML format)
+     */
     public String getClockGuide() {
         return "<h2>Chess Clock Guide</h2><p>Each player is given the equal amount of time at the start of the game, and only the active player's time is decreasing. " +
             "Before beginning the match, you must choose from a chess clock preset or you set a custom one yourself.</p>" +

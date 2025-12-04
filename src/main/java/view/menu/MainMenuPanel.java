@@ -10,12 +10,21 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.function.Consumer;
 
+/**
+ * This class is responsible for the main menu's panel.
+ * @author Miklós Bácsi
+ */
 public class MainMenuPanel extends JPanel {
 
     private final String[] MODES;
     private final Consumer<String> onStartGame;
     private BufferedImage backgroundImage;
 
+    /**
+     * Constructor that creates the various items for the main menu.
+     * @param modes names of the chess variants
+     * @param onStartGame actions of the start of variants
+     */
     public MainMenuPanel(String[] modes, Consumer<String> onStartGame) {
         this.MODES = modes;
         this.onStartGame = onStartGame;
@@ -73,7 +82,10 @@ public class MainMenuPanel extends JPanel {
         initCenterPanel();
     }
 
-    // Painting backgroun picture
+    /**
+     * Draws the background with the pictures.
+     * @param g Graphics to draw on
+     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -104,6 +116,9 @@ public class MainMenuPanel extends JPanel {
         }
     }
 
+    /**
+     * Initializes the center panel by creating the items for the various game modes.
+     */
     private void initCenterPanel() {
         JPanel mainContainer = new JPanel() {
             @Override
@@ -208,6 +223,10 @@ public class MainMenuPanel extends JPanel {
         add(centerWrapper, BorderLayout.CENTER);
     }
 
+    /**
+     * @param mode name of the chess variant
+     * @return the color for the given chess variant
+     */
     private Color getColorForMode(String mode) {
         return switch (mode) {
             case "Classical"    -> new Color(100, 149, 237);

@@ -3,6 +3,10 @@ package model;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This abstract base class represents a chess piece.
+ * @author Miklós Bácsi
+ */
 public abstract class Piece {
 
     protected int row;
@@ -13,6 +17,13 @@ public abstract class Piece {
     // Essential for Castling and Pawn double-push
     protected boolean hasMoved = false;
 
+    /**
+     * Constructor that initializes values.
+     * @param type type of the piece
+     * @param color color of the piece
+     * @param row row index of the piece
+     * @param col column index of the piece
+     */
     public Piece(PieceType type, PieceColor color, int row, int col) {
         this.type = type;
         this.color = color;
@@ -29,7 +40,9 @@ public abstract class Piece {
     /**
      * Logic for Rook, Bishop, and Queen.
      * Iterates in specific directions until it hits a wall or piece.
+     * @param board board to check on
      * @param directions 2D vectors, representing the directions
+     * @return the "geometrically" possible sliding moves
      */
     protected List<Move> getSlidingMoves(Board board, int[][] directions) {
         List<Move> moves = new ArrayList<>();
@@ -69,6 +82,9 @@ public abstract class Piece {
     /**
      * Logic for Knight and King.
      * Checks specific offsets (jumps/steps) exactly once.
+     * @param board board to check on
+     * @param offsets offsets (direction vectors) of a piece that determine where a piece can move relative to its stating position
+     * @return "geometrically" possible moves for piece
      */
     protected List<Move> getSingleStepMoves(Board board, int[][] offsets) {
         List<Move> moves = new ArrayList<>();
@@ -96,10 +112,21 @@ public abstract class Piece {
 
     // --- UTILITIES ---
 
-    public boolean isValidSquare(int r, int c) {
-        return r >= 0 && r < 8 && c >= 0 && c < 8;
+    /**
+     * Helper to check if a square valid
+     * @param row row index of square
+     * @param col column index of square
+     * @return whether the square (defined by row and col) is within the board or not
+     */
+    public boolean isValidSquare(int row, int col) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
     }
 
+    /**
+     * Moves the piece into the new position.
+     * @param newRow row index of new position
+     * @param newCol column index of new position
+     */
     public void move(int newRow, int newCol) {
         this.row = newRow;
         this.col = newCol;
@@ -108,14 +135,41 @@ public abstract class Piece {
 
     // --- GETTERS (Used by View) ---
 
+    /**
+     * @return file name of piece for the texture
+     */
     public String getFilename() {
         return color.name().toLowerCase() + "-" + type.name().toLowerCase();
     }
 
+    /**
+     * @return row index of piece
+     */
     public int getRow() { return row; }
+
+    /**
+     * @return column index of piece
+     */
     public int getCol() { return col; }
+
+    /**
+     * @return color of piece
+     */
     public PieceColor getColor() { return color; }
+
+    /**
+     * @return type of piece
+     */
     public PieceType getType() { return type; }
+
+    /**
+     * @return whether piece has moved
+     */
     public boolean hasMoved() { return hasMoved; }
+
+    /**
+     * Sets piece's state whether it has moved.
+     * @param hasMoved change piece's state to this
+     */
     public void setHasMoved(boolean hasMoved) { this.hasMoved = hasMoved; }
 }

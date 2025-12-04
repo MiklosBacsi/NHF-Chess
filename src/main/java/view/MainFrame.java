@@ -9,12 +9,20 @@ import view.menu.MainMenuPanel;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * This class is responsible for the main frame (window) of the program.
+ * @author Miklós Bácsi
+ */
 public class MainFrame extends JFrame {
 
     private final GameController controller;
     private final JPanel cards;
     private final GamePanel gamePanel;
 
+    /**
+     * Constructor that creates the various items.
+     * @param controller controller of the program
+     */
     public MainFrame(GameController controller) {
         this.controller = controller;
 
@@ -48,16 +56,27 @@ public class MainFrame extends JFrame {
         setMinimumSize(getSize());
     }
 
+    /**
+     * Starts a new game.
+     * @param mode name of the chosen chess variant
+     */
     public void startNewGame(String mode) {
         gamePanel.startNewGame(mode);
     }
 
-    // Switches the view
+    /**
+     * Switches the view to the card.
+     * @param cardName name of the card to show
+     */
     public void showCard(String cardName) {
         CardLayout cl = (CardLayout) cards.getLayout();
         cl.show(cards, cardName);
     }
 
+    /**
+     * Creates the menu bar.
+     * @return the created menu bar
+     */
     private JMenuBar createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
 
@@ -136,6 +155,10 @@ public class MainFrame extends JFrame {
         return menuBar;
     }
 
+    /**
+     * Sets the theme of the board to the given one.
+     * @param theme the theme or the board is set to this
+     */
     public void setBoardTheme(BoardTheme theme) {
         gamePanel.setBoardTheme(theme);
     }

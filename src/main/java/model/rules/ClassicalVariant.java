@@ -5,10 +5,18 @@ import model.pieces.King;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * This class represents the Classical chess with its rules.
+ * @author Miklós Bácsi
+ */
 public class ClassicalVariant implements GameVariant {
 
+    /**
+     * @param board board to check given piece's legal moves on
+     * @param piece piece to check its moves
+     * @return legal moves of this piece on this board according to the rules of the variant
+     */
     @Override
     public List<Move> getLegalMoves(Board board, Piece piece) {
         List<Move> legalMoves = new ArrayList<>();
@@ -35,6 +43,12 @@ public class ClassicalVariant implements GameVariant {
         return legalMoves;
     }
 
+    /**
+     * @param board board to check on
+     * @param move move to check
+     * @param myColor color of the player that made this move
+     * @return whether it is a safe move or not
+     */
     private boolean isMoveSafe(Board board, Move move, PieceColor myColor) {
         // Simulate Move
         board.executeMove(move);
@@ -48,6 +62,11 @@ public class ClassicalVariant implements GameVariant {
         return isSafe;
     }
 
+    /**
+     * @param board board to check on
+     * @param color color of the king
+     * @return whether king of the given color is in check or not
+     */
     @Override
     public boolean isCheck(Board board, PieceColor color) {
         Piece king = board.findKing(color);
@@ -57,7 +76,14 @@ public class ClassicalVariant implements GameVariant {
         return isSquareAttacked(board, king.getRow(), king.getCol(), color);
     }
 
-    // Helper: Checks if a specific square is under attack by the enemy
+    /**
+     * Helper: checks if a specific square is under attack by the enemy
+     * @param board board to check on
+     * @param targetRow row index of the square to check
+     * @param targetCol column index of the square to check
+     * @param defenderColor color of the defender (all other colors are enemies)
+     * @return if given square (defined by targetRow and targetCol) is under attack by an enemy piece
+     */
     private boolean isSquareAttacked(Board board, int targetRow, int targetCol, PieceColor defenderColor) {
         PieceColor enemyColor = (defenderColor == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
 
@@ -83,6 +109,12 @@ public class ClassicalVariant implements GameVariant {
 
     // --- SPECIAL MOVES LOGIC ---
 
+    /**
+     * Add castling moves to the legal moves if possible
+     * @param board board to check on
+     * @param king king to check castling moves for
+     * @param moves legal moves already collected (we add castling moves to it)
+     */
     private void addCastlingMoves(Board board, King king, List<Move> moves) {
         if (king.hasMoved() || isCheck(board, king.getColor())) return;
 
@@ -97,6 +129,14 @@ public class ClassicalVariant implements GameVariant {
         }
     }
 
+    /**
+     * @param board board to check on
+     * @param row row of the rook
+     * @param rookCol column of the rook
+     * @param empty1
+     * @param empty2
+     * @return whether
+     */
     private boolean canCastle(Board board, int row, int rookCol, int empty1, int empty2) {
         Piece rook = board.getPiece(row, rookCol);
         // Rook must exist, allow castling, and not have moved
@@ -121,6 +161,12 @@ public class ClassicalVariant implements GameVariant {
         return true;
     }
 
+    /**
+     * Add en passant moves to legal moves if possible
+     * @param board board to check on
+     * @param pawn pawn to check en passant moves for
+     * @param moves legal moves already collected (we add en passant moves to it)
+     */
     private void addEnPassantMoves(Board board, Piece pawn, List<Move> moves) {
         Move lastMove = board.getLastMove();
         if (lastMove == null) return;
@@ -142,6 +188,10 @@ public class ClassicalVariant implements GameVariant {
         }
     }
 
+    /**
+     * Check for promotions of pawns and updates moves accordingly
+     * @param moves possible legal moves
+     */
     private void checkPromotions(List<Move> moves) {
         // If a pawn move reaches rank 0 or 7, tag it as Promotion, for that we need to iterate and replace them
         for (int i = 0; i < moves.size(); i++) {
@@ -153,18 +203,33 @@ public class ClassicalVariant implements GameVariant {
         }
     }
 
+    /**
+     * @param board board to check on
+     * @param color color of the king to check
+     * @return returns whether a king of the given color is in checkmate
+     */
     @Override
     public boolean isCheckmate(Board board, PieceColor color) {
         if (!isCheck(board, color)) return false;
         return hasNoLegalMoves(board, color);
     }
 
+    /**
+     * @param board board to check on
+     * @param color color of the king to check
+     * @return returns whether a player with the given color is in stalemate
+     */
     @Override
     public boolean isStalemate(Board board, PieceColor color) {
         if (isCheck(board, color)) return false;
         return hasNoLegalMoves(board, color);
     }
 
+    /**
+     * @param board board to check on
+     * @param color color of the player to check
+     * @return whether a player with the given color has no legal moves
+     */
     private boolean hasNoLegalMoves(Board board, PieceColor color) {
         // Iterate all pieces of this color, see if ANY can move
         for (int r = 0; r < 8; r++) {

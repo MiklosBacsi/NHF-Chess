@@ -2,26 +2,45 @@ package view.game;
 
 import java.awt.Color;
 
+/**
+ * This class represents the various visual themes of the board.
+ * @author Miklós Bácsi
+ */
 public class BoardTheme {
 
     private final String name;
     private final Color light;
     private final Color dark;
 
+    /**
+     * Constructor that initializes values.
+     * @param name name of the theme
+     * @param light color of the light squares
+     * @param dark color of the dar squares
+     */
     public BoardTheme(String name, Color light, Color dark) {
         this.name = name;
         this.light = light;
         this.dark = dark;
     }
 
+    /**
+     * @return the name of the theme
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * @return the color of the light squares
+     */
     public Color getLight() {
         return light;
     }
 
+    /**
+     * @return the color of the dark squares
+     */
     public Color getDark() {
         return dark;
     }

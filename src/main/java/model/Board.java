@@ -3,17 +3,33 @@ package model;
 import model.pieces.*;
 import java.util.Stack;
 
+/**
+ * This class represents the chess board and stores its properties.
+ * @author Miklós Bácsi
+ */
 public class Board {
     private final Piece[][] squares = new Piece[8][8];
 
     // We need history to undo moves and check for En Passant availability
     private final Stack<Move> moveHistory = new Stack<>();
 
+    // Track whose turn it is
+    private PieceColor currentPlayer;
+
+    /**
+     * Constructor that sets up the board.
+     */
     public Board() {
         resetBoard();
     }
 
+    /**
+     * Resets the board.
+     */
     public void resetBoard() {
+        // Reset player
+        currentPlayer = PieceColor.WHITE;
+
         // Clear History
         moveHistory.clear();
 
@@ -33,6 +49,11 @@ public class Board {
         placeHeavyPieces(PieceColor.WHITE, 7);
     }
 
+    /**
+     * Places heavy pieces (every piece except for pawns) on the board
+     * @param color color the pieces to place on the board
+     * @param row row index where the pieces will be placed
+     */
     private void placeHeavyPieces(PieceColor color, int row) {
         placePiece(new Rook(color, row, 0), row, 0);
         placePiece(new Knight(color, row, 1), row, 1);
@@ -44,21 +65,52 @@ public class Board {
         placePiece(new Rook(color, row, 7), row, 7);
     }
 
+    /**
+     * @param row row index of the piece to get
+     * @param col column index of the piece to get
+     * @return the piece at the given coordinate (null if out of bounds or piece found at the given square)
+     */
     public Piece getPiece(int row, int col) {
         if (row < 0 || row >= 8 || col < 0 || col >= 8) return null;
         return squares[row][col];
     }
 
+    /**
+     * Places a piece to the given coordinate
+     * @param piece piece to place
+     * @param row row index of the board
+     * @param col column index of the board
+     */
     public void placePiece(Piece piece, int row, int col) {
         squares[row][col] = piece;
     }
 
+    /**
+     * @return last move (null if no move has happened)
+     */
     public Move getLastMove() {
         if (moveHistory.isEmpty()) return null;
         return moveHistory.peek();
     }
 
-    // --- EXECUTE MOVE (with Special Logic) ---
+    /**
+     * @return piece color of the current player
+     */
+    public PieceColor getCurrentPlayer() {
+        return currentPlayer;
+    }
+
+    /**
+     * Switches turn (after each move)
+     */
+    public void switchTurn() {
+        currentPlayer = currentPlayer.next();
+    }
+
+    /**
+     * --- EXECUTE MOVE (with Special Logic) ---
+     * @param move move to execute
+     */
     public void executeMove(Move move) {
         // Remove piece from start
         squares[move.startRow()][move.startCol()] = null;
@@ -99,7 +151,9 @@ public class Board {
         moveHistory.push(move);
     }
 
-    // --- UNDO MOVE (Crucial for validating Checks) ---
+    /**
+     * --- UNDO MOVE (Crucial for validating Checks) ---
+     */
     public void undoMove() {
         if (moveHistory.isEmpty()) return;
         Move move = moveHistory.pop();
@@ -156,7 +210,11 @@ public class Board {
         }
     }
 
-    // Helper to find King for check validation
+    /**
+     * Helper to find King for check validation
+     * @param color color of the king to find
+     * @return the king of the given color (null if the king is not found on the board)
+     */
     public Piece findKing(PieceColor color) {
         for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
@@ -166,6 +224,6 @@ public class Board {
                 }
             }
         }
-        return null; // Should never happen
+        return null;
     }
 }

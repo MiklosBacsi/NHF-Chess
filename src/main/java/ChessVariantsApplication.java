@@ -2,6 +2,10 @@ import controller.GameController;
 
 import javax.swing.*;
 
+/**
+ * This class represents and starts the program.
+ * @author Miklós Bácsi
+ */
 public class ChessVariantsApplication {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {

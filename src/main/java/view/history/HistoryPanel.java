@@ -3,10 +3,18 @@ package view.history;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * This class is responsible for controlling the program
+ * @author Miklós Bácsi
+ */
 public class HistoryPanel extends JPanel {
 
     private final Runnable onBack;
 
+    /**
+     * Constructor that creates the game history and other items.
+     * @param onBack back to the main menu button's action
+     */
     public HistoryPanel(Runnable onBack) {
         this.onBack = onBack;
         setLayout(new BorderLayout());
@@ -29,6 +37,10 @@ public class HistoryPanel extends JPanel {
         add(createBackButton(), BorderLayout.SOUTH);
     }
 
+    /**
+     * Creates a back to the main menu button.
+     * @return JComponent of button's panel
+     */
     private JComponent createBackButton() {
         JButton btn = new JButton("Back to Main Menu");
         btn.setFont(new Font("Arial", Font.BOLD, 20));

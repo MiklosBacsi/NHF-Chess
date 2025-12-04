@@ -4,12 +4,26 @@ import model.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class represents the piece pawn in chess.
+ * @author Miklós Bácsi
+ */
 public class Pawn extends Piece {
 
+    /**
+     * Constructor that initializes values
+     * @param color color of the piece
+     * @param row row index of the piece
+     * @param col column index of the piece
+     */
     public Pawn(PieceColor color, int row, int col) {
         super(PieceType.PAWN, color, row, col);
     }
 
+    /**
+     * @param board chess board (necessary for determining legal moves)
+     * @return pseudo-legal moves of this pawn (without the restrictions of variant rules)
+     */
     @Override
     public List<Move> getPseudoLegalMoves(Board board) {
         List<Move> moves = new ArrayList<>();

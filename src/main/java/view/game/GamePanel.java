@@ -3,11 +3,19 @@ package view.game;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * This class is responsible the game panel of the program.
+ * @author Miklós Bácsi
+ */
 public class GamePanel extends JPanel {
 
     private final BoardPanel boardPanel;
     private final JLabel gameModeLabel;
 
+    /**
+     * Constructor that creates the board and other items.
+     * @param onBack back to the main menu button's action
+     */
     public GamePanel(Runnable onBack) {
         setLayout(new BorderLayout());
         setBackground(new Color(60, 60, 60));
@@ -46,14 +54,26 @@ public class GamePanel extends JPanel {
         add(boardPanel, BorderLayout.CENTER);
     }
 
+    /**
+     * Sets the game mode label to the given text.
+     * @param text set game mode label to this
+     */
     public void setGameModeText(String text) {
         gameModeLabel.setText(text);
     }
 
+    /**
+     * Sets the theme of the board to the given one
+     * @param theme set theme of the board to this
+     */
     public void setBoardTheme(BoardTheme theme) {
         boardPanel.setTheme(theme);
     }
 
+    /**
+     * Starts a new game with the chosen variant
+     * @param modeName name of the chosen variant
+     */
     public void startNewGame(String modeName) {
         // Update Title text
         setGameModeText("Current Mode: " + modeName);

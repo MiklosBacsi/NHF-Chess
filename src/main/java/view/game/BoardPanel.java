@@ -15,6 +15,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
+/**
+ * This class is responsible for the visual representation of the chess board and its pieces.
+ * Furthermore, it handles user input (e.g. moving pieces).
+ * @author Miklós Bácsi
+ */
 public class BoardPanel extends JPanel {
 
     // --- State ---
@@ -41,6 +46,10 @@ public class BoardPanel extends JPanel {
 
     private GameVariant gameRules; // The Strategy
 
+
+    /**
+     * Constructor of BoardPanel which creates a new BoardPanel
+     */
     public BoardPanel() {
         this.board = new Board();
         setOpaque(false);
@@ -55,6 +64,10 @@ public class BoardPanel extends JPanel {
         addMouseMotionListener(mouseHandler);
     }
 
+    /**
+     * It creates a new game with the chosen variant
+     * @param mode determines the type of the game variant
+     */
     public void setupGame(String mode) {
         // Reset Model
         board.resetBoard();
@@ -82,6 +95,9 @@ public class BoardPanel extends JPanel {
         repaint();
     }
 
+    /**
+     * Loads the textures in memory
+     */
     private void loadResources() {
         String[] colors = {"white", "black"};
         String[] types = {"pawn", "rook", "knight", "bishop", "queen", "king"};
@@ -108,11 +124,19 @@ public class BoardPanel extends JPanel {
         }
     }
 
+    /**
+     * Sets the theme to the chosen one
+     * @param theme chosen theme
+     */
     public void setTheme(BoardTheme theme) {
         this.currentTheme = theme;
         repaint();
     }
 
+    /**
+     * This method is responsible for drawing the board with its pieces
+     * @param g Graphics (drawing onto this)
+     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -258,6 +282,13 @@ public class BoardPanel extends JPanel {
         }
     }
 
+    /**
+     * Helper method for drawing pieces on the board
+     * @param g2d Graphics2D (drawing onto this)
+     * @param piece pieces to draw
+     * @param x x coordinate
+     * @param y y coordinate
+     */
     private void drawPiece(Graphics2D g2d, Piece piece, int x, int y) {
         String key = piece.getFilename();
         BufferedImage img = pieceImages.get(key);
@@ -266,7 +297,12 @@ public class BoardPanel extends JPanel {
         }
     }
 
-    // Converts screen pixel coordinate into a chess board one
+    /**
+     * Converts screen pixel coordinate into a chess board one
+     * @param x
+     * @param y
+     * @return
+     */
     private Point getBoardCoordinates(int x, int y) {
         if (squareSize == 0) return null;
         int col = (x - startX) / squareSize;
@@ -279,9 +315,15 @@ public class BoardPanel extends JPanel {
     }
 
 
-    // --- Inner Class for Mouse Handling ---
+    /**
+     * --- Inner Class for Mouse Handling ---
+     */
     private class DragController extends MouseAdapter {
 
+        /**
+         * Handles event when the mouse is pressed
+         * @param e MouseEvent
+         */
         @Override
         public void mousePressed(MouseEvent e) {
             Point coords = getBoardCoordinates(e.getX(), e.getY());
@@ -310,6 +352,10 @@ public class BoardPanel extends JPanel {
             }
         }
 
+        /**
+         * Handles event when the mouse is dragged
+         * @param e MouseEvent
+         */
         @Override
         public void mouseDragged(MouseEvent e) {
             if (draggedPiece != null) {
@@ -323,6 +369,10 @@ public class BoardPanel extends JPanel {
             }
         }
 
+        /**
+         * Handles event when the mouse is released
+         * @param e MouseEvent
+         */
         @Override
         public void mouseReleased(MouseEvent e) {
             if (draggedPiece != null) {
