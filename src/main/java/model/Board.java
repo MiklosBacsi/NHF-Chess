@@ -16,6 +16,9 @@ public class Board {
     // Track whose turn it is
     private PieceColor currentPlayer;
 
+    // Important for making moves and turns correctly in Duck Chess
+    private boolean waitingForDuck = false;
+
     /**
      * Constructor that sets up the board.
      */
@@ -32,6 +35,9 @@ public class Board {
 
         // Clear History
         moveHistory.clear();
+
+        // Reset phase
+        waitingForDuck = false;
 
         // Clear squares
         for(int r=0; r<8; r++)
@@ -91,6 +97,41 @@ public class Board {
     public Move getLastMove() {
         if (moveHistory.isEmpty()) return null;
         return moveHistory.peek();
+    }
+
+    /**
+     * @param count how many last moves we want to get
+     * @return the last N moves from history, ordered from newest to oldest.
+     */
+    public java.util.List<Move> getLastMoves(int count) {
+        java.util.List<Move> recentMoves = new java.util.ArrayList<>();
+        int historySize = moveHistory.size();
+
+        // We cannot get more moves than there are
+        int limit = Math.min(count, historySize);
+
+        // Iterate backwards from the top of the stack
+        for (int i = 0; i < limit; i++) {
+            // Stack index: size - 1 is the top
+            recentMoves.add(moveHistory.get(historySize - 1 - i));
+        }
+
+        return recentMoves;
+    }
+
+    /**
+     * @return whether the player has moved a piece, but hasn't moved the duck yet in this turn (in Duck Chess)
+     */
+    public boolean isWaitingForDuck() {
+        return waitingForDuck;
+    }
+
+    /**
+     * Sets phase whether player hasn't moved the duck yet.
+     * @param waiting true, if player hasn't moved the duck yet (false otherwise)
+     */
+    public void setWaitingForDuck(boolean waiting) {
+        this.waitingForDuck = waiting;
     }
 
     /**

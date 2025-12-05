@@ -11,7 +11,8 @@ public enum PieceColor {
     RED,
     BLUE,
     YELLOW,
-    GREEN;
+    GREEN,
+    SPECIAL;
 
     /**
      * @return the color of the next player to move (order: clockwise)

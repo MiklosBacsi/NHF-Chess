@@ -84,7 +84,7 @@ public class ClassicalVariant implements GameVariant {
      * @param defenderColor color of the defender (all other colors are enemies)
      * @return if given square (defined by targetRow and targetCol) is under attack by an enemy piece
      */
-    private boolean isSquareAttacked(Board board, int targetRow, int targetCol, PieceColor defenderColor) {
+    protected boolean isSquareAttacked(Board board, int targetRow, int targetCol, PieceColor defenderColor) {
         PieceColor enemyColor = (defenderColor == PieceColor.WHITE) ? PieceColor.BLACK : PieceColor.WHITE;
 
         // Iterate over all squares to find enemy pieces
@@ -115,7 +115,7 @@ public class ClassicalVariant implements GameVariant {
      * @param king king to check castling moves for
      * @param moves legal moves already collected (we add castling moves to it)
      */
-    private void addCastlingMoves(Board board, King king, List<Move> moves) {
+    protected void addCastlingMoves(Board board, King king, List<Move> moves) {
         if (king.hasMoved() || isCheck(board, king.getColor())) return;
 
         int row = king.getRow();
@@ -133,11 +133,11 @@ public class ClassicalVariant implements GameVariant {
      * @param board board to check on
      * @param row row of the rook
      * @param rookCol column of the rook
-     * @param empty1
-     * @param empty2
-     * @return whether
+     * @param empty1 column1 that must be empty for the king to castle
+     * @param empty2 column2 that must be empty for the king to castle
+     * @return whether a king can castle
      */
-    private boolean canCastle(Board board, int row, int rookCol, int empty1, int empty2) {
+    protected boolean canCastle(Board board, int row, int rookCol, int empty1, int empty2) {
         Piece rook = board.getPiece(row, rookCol);
         // Rook must exist, allow castling, and not have moved
         if (rook == null || rook.getType() != PieceType.ROOK || rook.hasMoved()) return false;
@@ -167,7 +167,7 @@ public class ClassicalVariant implements GameVariant {
      * @param pawn pawn to check en passant moves for
      * @param moves legal moves already collected (we add en passant moves to it)
      */
-    private void addEnPassantMoves(Board board, Piece pawn, List<Move> moves) {
+    protected void addEnPassantMoves(Board board, Piece pawn, List<Move> moves) {
         Move lastMove = board.getLastMove();
         if (lastMove == null) return;
 
@@ -192,7 +192,7 @@ public class ClassicalVariant implements GameVariant {
      * Check for promotions of pawns and updates moves accordingly
      * @param moves possible legal moves
      */
-    private void checkPromotions(List<Move> moves) {
+    protected void checkPromotions(List<Move> moves) {
         // If a pawn move reaches rank 0 or 7, tag it as Promotion, for that we need to iterate and replace them
         for (int i = 0; i < moves.size(); i++) {
             Move m = moves.get(i);

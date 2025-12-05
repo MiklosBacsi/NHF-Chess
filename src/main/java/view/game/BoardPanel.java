@@ -1,7 +1,9 @@
 package view.game;
 
 import model.*;
+import model.pieces.Duck;
 import model.rules.ClassicalVariant;
+import model.rules.DuckChessVariant;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -25,6 +27,7 @@ public class BoardPanel extends JPanel {
     // --- State ---
     private final Board board;
     private final Map<String, BufferedImage> pieceImages = new HashMap<>();
+    private boolean isGameOver = false;
 
     // --- Drag & Drop State ---
     private Piece draggedPiece = null;
@@ -73,21 +76,25 @@ public class BoardPanel extends JPanel {
         // Reset Model
         board.resetBoard();
 
-        // Select Rules Strategy
-        // We will add the other classes later, for now we map them!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+        // Select Rules & Special Setup
         switch (mode) {
             case "Classical":
                 this.gameRules = new ClassicalVariant();
                 break;
-            // Placeholders for future:
-            // case "Fog of War": this.gameRules = new FogOfWarVariant(); break;
-            // case "Duck Chess": this.gameRules = new DuckChessVariant(); break;
+
+            case "Duck Chess":
+                this.gameRules = new DuckChessVariant();
+                board.placePiece(new Duck(3, 3), 3, 3); // d5
+                break;
+
             default:
                 this.gameRules = new ClassicalVariant(); // Fallback
                 break;
         }
 
         this.viewPerspective = PieceColor.WHITE;
+
+        isGameOver = false;
 
         // Clear UI state
         draggedPiece = null;
@@ -105,6 +112,7 @@ public class BoardPanel extends JPanel {
         String[] colors = {"white", "black"};
         String[] types = {"pawn", "rook", "knight", "bishop", "queen", "king"};
 
+        // Standard black & white pieces
         for (String c : colors) {
             for (String t : types) {
                 // The key will be "white-pawn" (matches Piece.getFilename())
@@ -124,6 +132,14 @@ public class BoardPanel extends JPanel {
                     e.printStackTrace();
                 }
             }
+        }
+
+        // Duck
+        try {
+            URL url = getClass().getResource("/piece/special/duck.png");
+            if (url != null) pieceImages.put("special-duck", ImageIO.read(url));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -166,6 +182,16 @@ public class BoardPanel extends JPanel {
         this.startX = (width - boardPixelSize) / 2;
         this.startY = (height - boardPixelSize) / 2;
 
+        // Determine how many last moves to highlight
+        int movesToShow = 1; // Default (Classical)
+
+        if (gameRules instanceof DuckChessVariant) {
+            movesToShow = 2; // Piece Move + Duck Move
+        }
+
+        List<Move> recentMoves = board.getLastMoves(movesToShow);
+
+        // Checks
         boolean whiteInCheck = gameRules.isCheck(board, PieceColor.WHITE);
         boolean blackInCheck = gameRules.isCheck(board, PieceColor.BLACK);
 
@@ -198,14 +224,18 @@ public class BoardPanel extends JPanel {
 
                 // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
 
-                // Draw Last Move Highlight (only draw if NOT dragging, and there is a history)
-                if (draggedPiece == null && lastMove != null) {
-                    boolean isStart = (lastMove.startRow() == row && lastMove.startCol() == col);
-                    boolean isEnd = (lastMove.endRow() == row && lastMove.endCol() == col);
+                // Draw Last Move Highlights (Recent Moves) (only draw if NOT dragging, and there is a history)
+                if (draggedPiece == null) {
+                    // Loop through the list of recent moves
+                    for (Move move : recentMoves) {
+                        boolean isStart = (move.startRow() == row && move.startCol() == col);
+                        boolean isEnd = (move.endRow() == row && move.endCol() == col);
 
-                    if (isStart || isEnd) {
-                        g2d.setColor(moveHighlightColor); // Reusing the Yellow
-                        g2d.fillRect(x, y, squareSize, squareSize);
+                        if (isStart || isEnd) {
+                            g2d.setColor(moveHighlightColor);
+                            g2d.fillRect(x, y, squareSize, squareSize);
+                            // We don't break here, because we can draw multiple times on the same square
+                        }
                     }
                 }
 
@@ -405,6 +435,10 @@ public class BoardPanel extends JPanel {
          */
         @Override
         public void mousePressed(MouseEvent e) {
+
+            // Disabled after end of game
+            if (isGameOver) return;
+
             Point coords = getBoardCoordinates(e.getX(), e.getY());
 
             // Checks if we clicked a valid square
@@ -415,7 +449,7 @@ public class BoardPanel extends JPanel {
                 if (clickedPiece != null) {
 
                     // Turn Validation
-                    if (clickedPiece.getColor() != board.getCurrentPlayer()) {
+                    if (clickedPiece.getColor() != board.getCurrentPlayer() && clickedPiece.getColor() != PieceColor.SPECIAL) {
                         System.out.println("Not your turn!");
                         return; // Ignore click
                     }
@@ -478,31 +512,80 @@ public class BoardPanel extends JPanel {
                         for (Move m : currentLegalMoves) {
                             if (m.endRow() == targetRow && m.endCol() == targetCol) {
                                 isValid = true;
+
+                                // CHECK FOR KING CAPTURE (Duck Chess / General)
+                                if (m.capturedPiece() != null && m.capturedPiece().getType() == PieceType.KING) {
+                                    System.out.println("---------------------------------------");
+                                    System.out.println("GAME OVER! " + m.piece().getColor() + " captured the King!");
+                                    System.out.println("---------------------------------------");
+
+                                    // LOCK THE GAME
+                                    isGameOver = true;
+
+                                    // Execute move visually so we see the capture
+                                    board.executeMove(m);
+                                    draggedPiece = null;
+                                    repaint();
+                                    return; // Stop here!
+                                }
+
                                 // Execute Move in Model
                                 board.executeMove(m);
 
-                                // Switch Turn
-                                board.switchTurn();
-
-                                // Rotate view to match the new player
-                                viewPerspective = board.getCurrentPlayer();
-
-                                // --- Check Game Over Conditions ---
-
-                                // We check the status of the player whose turn it is NOW.
-                                PieceColor activePlayer = board.getCurrentPlayer();
-
-                                if (gameRules.isCheckmate(board, activePlayer)) {
-                                    // If active player is mated, the previous player won
-                                    PieceColor winner = activePlayer.next();
-                                    System.out.println("---------------------------------------");
-                                    System.out.println("CHECKMATE! " + winner + " wins!");
-                                    System.out.println("---------------------------------------");
+                                // --- HANDLE DUCK LOGIC (+ Turn Switching) ---
+                                if (gameRules instanceof DuckChessVariant) {
+                                    if (m.type() == MoveType.DUCK) {
+                                        // Duck moved -> Turn Over!
+                                        board.setWaitingForDuck(false);
+                                        board.switchTurn();
+                                        viewPerspective = board.getCurrentPlayer(); // Rotate view to match the new player
+                                    } else {
+                                        // Normal move -> Now waiting for Duck!
+                                        board.setWaitingForDuck(true);
+                                        // DO NOT switch turn
+                                        // DO NOT rotate view
+                                    }
+                                } else {
+                                    // Classical / Other Modes
+                                    board.switchTurn();
+                                    viewPerspective = board.getCurrentPlayer();
                                 }
-                                else if (gameRules.isStalemate(board, activePlayer)) {
-                                    System.out.println("---------------------------------------");
-                                    System.out.println("STALEMATE! The game is a draw.");
-                                    System.out.println("---------------------------------------");
+
+                                // CHECK FOR END GAME CONDITIONS (only if turn actually switched)
+                                if (!isGameOver && !board.isWaitingForDuck()) {
+                                    // We check the status of the player whose turn it is NOW.
+                                    PieceColor activePlayer = board.getCurrentPlayer();
+
+                                    // Checkmate
+                                    if (gameRules.isCheckmate(board, activePlayer)) {
+                                        // If active player is mated, the previous player won
+                                        PieceColor winner = activePlayer.next();
+                                        System.out.println("---------------------------------------");
+                                        System.out.println("CHECKMATE! " + winner + " wins!");
+                                        System.out.println("---------------------------------------");
+
+                                        // LOCK THE GAME
+                                        isGameOver = true;
+                                    }
+                                    // Stalemate
+                                    else if (gameRules.isStalemate(board, activePlayer)) {
+
+                                        // Check specific variant rule
+                                        if (gameRules instanceof DuckChessVariant) {
+                                            // DUCK CHESS RULE: The player who cannot move WINS!
+                                            System.out.println("---------------------------------------");
+                                            System.out.println("STALEMATE! " + activePlayer + " has no moves and WINS!");
+                                            System.out.println("---------------------------------------");
+                                        } else {
+                                            // CLASSICAL RULE: It is a Draw
+                                            System.out.println("---------------------------------------");
+                                            System.out.println("STALEMATE! The game is a draw.");
+                                            System.out.println("---------------------------------------");
+                                        }
+
+                                        // LOCK THE GAME
+                                        isGameOver = true;
+                                    }
                                 }
 
                                 break;
