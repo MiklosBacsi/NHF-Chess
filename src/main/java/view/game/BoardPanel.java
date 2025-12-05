@@ -380,31 +380,6 @@ public class BoardPanel extends JPanel {
                     for (Move m : moves) {
                         visibleSquares.add(new Point(m.endCol(), m.endRow()));
                     }
-
-                    // SPECIAL: Pawn Vision
-                    if (p.getType() == PieceType.PAWN) {
-                        int direction = (myColor == PieceColor.WHITE) ? -1 : 1;
-                        int forwardRow = r + direction;
-
-                        // Diagonals (Always visible in FoW to see threats)
-                        visibleSquares.add(new Point(c - 1, forwardRow));
-                        visibleSquares.add(new Point(c + 1, forwardRow));
-
-                        // Forward Vision
-                        // We add the square in front of the pawn to visibility, regardless of whether it is blocked or empty.
-                        // This allows us to "see" the piece blocking us.
-                        if (forwardRow >= 0 && forwardRow < 8) {
-                            visibleSquares.add(new Point(c, forwardRow));
-
-                            // Double Step (only if the square immediately in front is EMPTY (Line of sight not blocked))
-                            if (!p.hasMoved() && board.getPiece(forwardRow, c) == null) {
-                                int doubleRow = r + (direction * 2);
-                                if (doubleRow >= 0 && doubleRow < 8) {
-                                    visibleSquares.add(new Point(c, doubleRow));
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
