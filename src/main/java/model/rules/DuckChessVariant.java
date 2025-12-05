@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * This class represents the Duck Chess variant with its rules.
+ * This class implements the Duck Chess variant with its rules.
  * Rules:
  * The duck is a barrier that pieces cannot capture or move through.
  * Each player’s turn has 2 steps: After moving a piece, the duck must be moved to a different and empty square.
@@ -68,7 +68,7 @@ public class DuckChessVariant extends ClassicalVariant {
     // --- DISABLE STANDARD CHECK/MATE ---
 
     /**
-     * Always return false, because there are no checks in Duck Chess
+     * Always returns false, because there are no checks in Duck Chess.
      * @param board board to check on
      * @param color color of the king
      * @return false
@@ -80,7 +80,7 @@ public class DuckChessVariant extends ClassicalVariant {
     }
 
     /**
-     * Always return false, because there are no checkmates in Duck Chess
+     * Always returns false, because there are no checkmates in Duck Chess.
      * @param board board to check on
      * @param color color of the king to check
      * @return false

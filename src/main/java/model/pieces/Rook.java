@@ -4,7 +4,7 @@ import model.*;
 import java.util.List;
 
 /**
- * This class represents the piece rook in chess.
+ * This class implements the piece rook in chess.
  * @author Miklós Bácsi
  */
 public class Rook extends Piece {

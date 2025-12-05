@@ -4,7 +4,7 @@ import model.*;
 import java.util.List;
 
 /**
- * This class represents the piece queen in chess.
+ * This class implements the piece queen in chess.
  * @author Miklós Bácsi
  */
 public class Queen extends Piece {

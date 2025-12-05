@@ -3,7 +3,7 @@ package view.game;
 import java.awt.Color;
 
 /**
- * This class represents the various visual themes of the board.
+ * This class implements the various visual themes of the board.
  * @author Miklós Bácsi
  */
 public class BoardTheme {

@@ -6,7 +6,7 @@ import view.game.BoardTheme;
 import javax.swing.*;
 
 /**
- * This class is responsible for controlling the program
+ * This class is responsible for controlling the program.
  * @author Miklós Bácsi
  */
 public class GameController {

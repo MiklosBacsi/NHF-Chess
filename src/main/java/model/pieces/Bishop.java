@@ -4,7 +4,7 @@ import model.*;
 import java.util.List;
 
 /**
- * This class represents the piece bishop in chess.
+ * This class implements the piece bishop in chess.
  * @author Miklós Bácsi
  */
 public class Bishop extends Piece {

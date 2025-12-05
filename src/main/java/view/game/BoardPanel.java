@@ -2,8 +2,7 @@ package view.game;
 
 import model.*;
 import model.pieces.Duck;
-import model.rules.ClassicalVariant;
-import model.rules.DuckChessVariant;
+import model.rules.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -13,8 +12,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.List;
 
 /**
@@ -44,6 +42,8 @@ public class BoardPanel extends JPanel {
     private final Color moveHintColor = new Color(0, 0, 0, 50); // Dark dot for valid squares
     private final Color checkHighlightColor = new Color(255, 0, 0, 128);
     private PieceColor viewPerspective = PieceColor.WHITE; // Determines which side is at the bottom of the screen
+    private final Set<Point> visibleSquares = new HashSet<>();
+    private boolean isBlindMode = false; // "Curtain" for passing turn
 
     // Cached calculation values to share between paint() and mouse listeners
     private int startX, startY, squareSize;
@@ -82,6 +82,10 @@ public class BoardPanel extends JPanel {
                 this.gameRules = new ClassicalVariant();
                 break;
 
+            case "Fog of War":
+                this.gameRules = new FogOfWarVariant();
+                break;
+
             case "Duck Chess":
                 this.gameRules = new DuckChessVariant();
                 board.placePiece(new Duck(3, 3), 3, 3); // d5
@@ -93,6 +97,11 @@ public class BoardPanel extends JPanel {
         }
 
         this.viewPerspective = PieceColor.WHITE;
+
+        // Calculate initial visibility for White
+        if (gameRules instanceof FogOfWarVariant) {
+            calculateVisibility();
+        }
 
         isGameOver = false;
 
@@ -201,6 +210,8 @@ public class BoardPanel extends JPanel {
 
         Move lastMove = board.getLastMove();
 
+        boolean isFoggyGame = (gameRules instanceof FogOfWarVariant);
+
         // Draw the Board & Pieces
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
@@ -211,6 +222,17 @@ public class BoardPanel extends JPanel {
                 int x = startX + (visualCol * squareSize);
                 int y = startY + (visualRow * squareSize);
 
+                // VISIBILITY CHECK
+                // Point uses x=col, y=row
+                boolean isVisible = visibleSquares.contains(new Point(col, row));
+
+                // If Blind Mode is ON, everything is hidden
+                if (isBlindMode) isVisible = false;
+
+                // If not a Fog game, everything is visible
+                if (!isFoggyGame) isVisible = true;
+
+
                 // Determine color of square
                 if ((row + col) % 2 == 0) {
                     g2d.setColor(currentTheme.getLight());
@@ -220,6 +242,18 @@ public class BoardPanel extends JPanel {
 
                 // Draw the square (Background)
                 g2d.fillRect(x, y, squareSize, squareSize);
+
+                // IF NOT VISIBLE -> DRAW FOG AND SKIP CONTENT
+                if (!isVisible) {
+                    // Use the GREY theme colors to represent fog
+                    if ((row + col) % 2 == 0) {
+                        g2d.setColor(BoardTheme.GREY.getLight());
+                    } else {
+                        g2d.setColor(BoardTheme.GREY.getDark());
+                    }
+                    g2d.fillRect(x, y, squareSize, squareSize);
+                    continue; // STOP HERE for this square (Don't draw pieces/highlights)
+                }
 
 
                 // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
@@ -323,6 +357,56 @@ public class BoardPanel extends JPanel {
         if (draggedPiece != null) {
             // Draw at mouse position (adjusted by offset)
             drawPiece(g2d, draggedPiece, dragX - dragOffsetX, dragY - dragOffsetY);
+        }
+    }
+
+    /**
+     * Recalculates visible squares.
+     */
+    private void calculateVisibility() {
+        visibleSquares.clear();
+        PieceColor myColor = board.getCurrentPlayer();
+
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+
+                // I can see my own pieces
+                if (p != null && p.getColor() == myColor) {
+                    visibleSquares.add(new Point(c, r)); // x=c, y=r
+
+                    // I can see where my pieces can move
+                    List<Move> moves = p.getPseudoLegalMoves(board);
+                    for (Move m : moves) {
+                        visibleSquares.add(new Point(m.endCol(), m.endRow()));
+                    }
+
+                    // SPECIAL: Pawn Vision
+                    if (p.getType() == PieceType.PAWN) {
+                        int direction = (myColor == PieceColor.WHITE) ? -1 : 1;
+                        int forwardRow = r + direction;
+
+                        // Diagonals (Always visible in FoW to see threats)
+                        visibleSquares.add(new Point(c - 1, forwardRow));
+                        visibleSquares.add(new Point(c + 1, forwardRow));
+
+                        // Forward Vision
+                        // We add the square in front of the pawn to visibility, regardless of whether it is blocked or empty.
+                        // This allows us to "see" the piece blocking us.
+                        if (forwardRow >= 0 && forwardRow < 8) {
+                            visibleSquares.add(new Point(c, forwardRow));
+
+                            // Double Step (only if the square immediately in front is EMPTY (Line of sight not blocked))
+                            if (!p.hasMoved() && board.getPiece(forwardRow, c) == null) {
+                                int doubleRow = r + (direction * 2);
+                                if (doubleRow >= 0 && doubleRow < 8) {
+                                    visibleSquares.add(new Point(c, doubleRow));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -549,8 +633,28 @@ public class BoardPanel extends JPanel {
                                 // Execute Move in Model
                                 board.executeMove(finalMove);
 
+                                // --- FOG OF WAR LOGIC ---
+                                if (gameRules instanceof FogOfWarVariant) {
+                                    board.switchTurn();
+                                    viewPerspective = board.getCurrentPlayer();
+
+                                    // Enable Blind Mode (Hide everything)
+                                    isBlindMode = true;
+                                    repaint(); // Force draw fog immediately
+
+                                    // Show Modal Dialog (halts the thread)
+                                    SwingUtilities.invokeLater(() -> {
+                                        Frame parent = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
+                                        new PassTurnDialog(parent, board.getCurrentPlayer()).setVisible(true);
+
+                                        // Dialog Closed -> Unblind and update
+                                        isBlindMode = false;
+                                        calculateVisibility(); // Calculate for NEW player
+                                        repaint();
+                                    });
+                                }
                                 // --- HANDLE DUCK LOGIC (+ Turn Switching) ---
-                                if (gameRules instanceof DuckChessVariant) {
+                                else if (gameRules instanceof DuckChessVariant) {
                                     if (m.type() == MoveType.DUCK) {
                                         // Duck moved -> Turn Over!
                                         board.setWaitingForDuck(false);
@@ -563,7 +667,7 @@ public class BoardPanel extends JPanel {
                                         // DO NOT rotate view
                                     }
                                 } else {
-                                    // Classical / Other Modes
+                                    // --- CLASSICAL LOGIC ---
                                     board.switchTurn();
                                     viewPerspective = board.getCurrentPlayer();
                                 }

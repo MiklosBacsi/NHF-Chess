@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class represents the piece pawn in chess.
+ * This class implements the piece pawn in chess.
  * @author Miklós Bácsi
  */
 public class Pawn extends Piece {

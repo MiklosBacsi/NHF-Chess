@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class represents the Classical chess with its rules.
+ * This class implements the Classical chess with its rules.
  * @author Miklós Bácsi
  */
 public class ClassicalVariant implements GameVariant {

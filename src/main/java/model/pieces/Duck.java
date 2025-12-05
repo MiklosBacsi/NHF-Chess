@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class represents the piece duck in Duck Chess variant.
+ * This class implements the piece duck in Duck Chess variant.
  * @author Miklós Bácsi
  */
 public class Duck extends Piece {
