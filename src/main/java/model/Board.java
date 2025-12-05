@@ -183,9 +183,20 @@ public class Board {
             }
         }
 
-        // Handle Promotion (Simple Auto-Queen for now, UI handles choice later) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // Handle Promotion
         if (move.type() == MoveType.PROMOTION) {
-            Piece promotedPiece = new Queen(move.piece().getColor(), move.endRow(), move.endCol());
+            Piece promotedPiece;
+
+            // Check what the user chose (Default to Queen if null, for safety)
+            PieceType type = (move.promotionType() != null) ? move.promotionType() : PieceType.QUEEN;
+
+            switch (type) {
+                case ROOK -> promotedPiece = new Rook(move.piece().getColor(), move.endRow(), move.endCol());
+                case BISHOP -> promotedPiece = new Bishop(move.piece().getColor(), move.endRow(), move.endCol());
+                case KNIGHT -> promotedPiece = new Knight(move.piece().getColor(), move.endRow(), move.endCol());
+                default -> promotedPiece = new Queen(move.piece().getColor(), move.endRow(), move.endCol());
+            }
+
             squares[move.endRow()][move.endCol()] = promotedPiece;
         }
 

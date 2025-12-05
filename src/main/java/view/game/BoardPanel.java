@@ -513,24 +513,41 @@ public class BoardPanel extends JPanel {
                             if (m.endRow() == targetRow && m.endCol() == targetCol) {
                                 isValid = true;
 
-                                // CHECK FOR KING CAPTURE (Duck Chess / General)
-                                if (m.capturedPiece() != null && m.capturedPiece().getType() == PieceType.KING) {
+                                // --- PROMOTION LOGIC ---
+                                Move finalMove = m;
+
+                                if (m.type() == model.MoveType.PROMOTION) {
+                                    // Open the Dialog
+                                    // We find the parent Frame to center the dialog correctly
+                                    Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
+                                    PromotionDialog dialog = new PromotionDialog(parentFrame, m.piece().getColor());
+                                    dialog.setVisible(true); // This halts code execution until dialog closes
+
+                                    // Get Selection
+                                    PieceType choice = dialog.getSelectedType();
+
+                                    // Create a NEW Move with the specific choice
+                                    finalMove = new Move(m, choice);
+                                }
+
+                                // --- CHECK FOR KING CAPTURE (Duck Chess) ---
+                                if (finalMove.capturedPiece() != null && finalMove.capturedPiece().getType() == PieceType.KING) {
                                     System.out.println("---------------------------------------");
-                                    System.out.println("GAME OVER! " + m.piece().getColor() + " captured the King!");
+                                    System.out.println("GAME OVER! " + finalMove.piece().getColor() + " captured the King!");
                                     System.out.println("---------------------------------------");
 
                                     // LOCK THE GAME
                                     isGameOver = true;
 
                                     // Execute move visually so we see the capture
-                                    board.executeMove(m);
+                                    board.executeMove(finalMove);
                                     draggedPiece = null;
                                     repaint();
                                     return; // Stop here!
                                 }
 
                                 // Execute Move in Model
-                                board.executeMove(m);
+                                board.executeMove(finalMove);
 
                                 // --- HANDLE DUCK LOGIC (+ Turn Switching) ---
                                 if (gameRules instanceof DuckChessVariant) {
@@ -551,7 +568,7 @@ public class BoardPanel extends JPanel {
                                     viewPerspective = board.getCurrentPlayer();
                                 }
 
-                                // CHECK FOR END GAME CONDITIONS (only if turn actually switched)
+                                // --- CHECK FOR END GAME CONDITIONS (only if turn actually switched) ---
                                 if (!isGameOver && !board.isWaitingForDuck()) {
                                     // We check the status of the player whose turn it is NOW.
                                     PieceColor activePlayer = board.getCurrentPlayer();

@@ -10,7 +10,8 @@ public record Move(
         int endRow, int endCol,
         MoveType type,
         Piece capturedPiece, // for Undo logic!
-        boolean isFirstMove
+        boolean isFirstMove,
+        PieceType promotionType
 ) {
 
     /**
@@ -22,7 +23,7 @@ public record Move(
      * @param endCol column index of destination position
      */
     public Move(Piece piece, int startRow, int startCol, int endRow, int endCol) {
-        this(piece, startRow, startCol, endRow, endCol, MoveType.NORMAL, null, !piece.hasMoved());
+        this(piece, startRow, startCol, endRow, endCol, MoveType.NORMAL, null, !piece.hasMoved(), null);
     }
 
     /**
@@ -35,7 +36,7 @@ public record Move(
      * @param capturedPiece piece that was captured
      */
     public Move(Piece piece, int startRow, int startCol, int endRow, int endCol, Piece capturedPiece) {
-        this(piece, startRow, startCol, endRow, endCol, MoveType.NORMAL, capturedPiece,  !piece.hasMoved());
+        this(piece, startRow, startCol, endRow, endCol, MoveType.NORMAL, capturedPiece,  !piece.hasMoved(), null);
     }
 
     /**
@@ -49,6 +50,16 @@ public record Move(
      * @param capturedPiece piece that was captured
      */
     public Move(Piece piece, int startRow, int startCol, int endRow, int endCol, MoveType type, Piece capturedPiece) {
-        this(piece, startRow, startCol, endRow, endCol, type, capturedPiece, !piece.hasMoved());
+        this(piece, startRow, startCol, endRow, endCol, type, capturedPiece, !piece.hasMoved(), null);
+    }
+
+    /**
+     * Constructor for the "Answered" Promotion Move (Used after user selects a piece).
+     * @param original original move
+     * @param chosenType type of the piece chosen
+     */
+    public Move(Move original, PieceType chosenType) {
+        this(original.piece, original.startRow, original.startCol, original.endRow, original.endCol,
+                original.type, original.capturedPiece, original.isFirstMove, chosenType);
     }
 }
