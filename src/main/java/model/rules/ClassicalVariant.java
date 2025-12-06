@@ -49,7 +49,7 @@ public class ClassicalVariant implements GameVariant {
      * @param myColor color of the player that made this move
      * @return whether it is a safe move or not
      */
-    private boolean isMoveSafe(Board board, Move move, PieceColor myColor) {
+    protected boolean isMoveSafe(Board board, Move move, PieceColor myColor) {
         // Simulate Move
         board.executeMove(move);
 

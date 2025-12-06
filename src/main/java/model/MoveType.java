@@ -9,5 +9,6 @@ public enum MoveType {
     CASTLING,
     EN_PASSANT,
     PROMOTION,
-    DUCK
+    DUCK,
+    DROP
 }

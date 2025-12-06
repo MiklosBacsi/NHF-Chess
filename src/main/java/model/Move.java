@@ -62,4 +62,15 @@ public record Move(
         this(original.piece, original.startRow, original.startCol, original.endRow, original.endCol,
                 original.type, original.capturedPiece, original.isFirstMove, chosenType);
     }
+
+    /**
+     * Constructor for DROP moves (within Crazyhouse).
+     * @param piece pieces we want to drop
+     * @param row row index where we want to drop the piece
+     * @param col column index where we want to drop the piece
+     * @return the move of the piece dropped
+     */
+    public static Move createDropMove(Piece piece, int row, int col) {
+        return new Move(piece, -1, -1, row, col, MoveType.DROP, null, true, null);
+    }
 }

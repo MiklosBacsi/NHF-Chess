@@ -2,6 +2,8 @@ package model;
 
 import model.pieces.*;
 import java.util.Stack;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * This class represents the chess board and stores its properties.
@@ -13,6 +15,10 @@ public class Board {
     // We need history to undo moves and check for En Passant availability
     private final Stack<Move> moveHistory = new Stack<>();
 
+    // For Crazyhouse variant
+    private final Map<PieceColor, Map<PieceType, Integer>> reserves = new HashMap<>();
+    private boolean crazyhouseMode = false;
+
     // Track whose turn it is
     private PieceColor currentPlayer;
 
@@ -23,6 +29,10 @@ public class Board {
      * Constructor that sets up the board.
      */
     public Board() {
+        // Initialize reserves structure
+        reserves.put(PieceColor.WHITE, new HashMap<>());
+        reserves.put(PieceColor.BLACK, new HashMap<>());
+
         resetBoard();
     }
 
@@ -30,6 +40,9 @@ public class Board {
      * Resets the board.
      */
     public void resetBoard() {
+        // Reset Crazyhouse mode
+        this.crazyhouseMode = false;
+
         // Reset player
         currentPlayer = PieceColor.WHITE;
 
@@ -53,6 +66,10 @@ public class Board {
         // Heavy Pieces
         placeHeavyPieces(PieceColor.BLACK, 0);
         placeHeavyPieces(PieceColor.WHITE, 7);
+
+        // Clear Reserves
+        reserves.get(PieceColor.WHITE).clear();
+        reserves.get(PieceColor.BLACK).clear();
     }
 
     /**
@@ -135,6 +152,60 @@ public class Board {
     }
 
     /**
+     * Sets whether the variant is Crazyhouse.
+     * @param active true if variant is Crazyhouse, false otherwise
+     */
+    public void setCrazyhouseMode(boolean active) {
+        this.crazyhouseMode = active;
+    }
+
+    /**
+     * Crazyhouse: after capturing a piece, we add it to the reserve of the capturer.
+     * @param owner the player who captured the piece
+     * @param type type of the piece that was captured
+     */
+    public void addToReserve(PieceColor owner, PieceType type) {
+        Map<PieceType, Integer> inventory = reserves.get(owner);
+        inventory.put(type, inventory.getOrDefault(type, 0) + 1);
+    }
+
+    /**
+     * Crazyhouse: after capturing a piece, we can place in on the board and for that we need to remove it from the reserve.
+     * @param owner the player who captured a piece and now places it on the board
+     * @param type type of the pieces captured and placed on the board
+     */
+    public void removeFromReserve(PieceColor owner, PieceType type) {
+        Map<PieceType, Integer> inventory = reserves.get(owner);
+        if (inventory.containsKey(type)) {
+            int count = inventory.get(type);
+            if (count > 1) {
+                inventory.put(type, count - 1);
+            } else {
+                inventory.remove(type);
+            }
+        }
+    }
+
+    /**
+     * Crazyhouse: we can capture pieces and then place them on the board.
+     * @param owner player who captured pieces, and we want to know how many pieces he captured of certain type.
+     * @param type type of the piece we want to get the count of
+     * @return count of a certain type of piece a given player captured
+     */
+    public int getReserveCount(PieceColor owner, PieceType type) {
+        return reserves.get(owner).getOrDefault(type, 0);
+    }
+
+    /**
+     * Crazyhouse: we can capture pieces and then place them on the board.
+     * @param owner the player who captured pieces, and we want to get the content of his reserve
+     * @return the reserve (of pieces) of the given player
+     */
+        public Map<PieceType, Integer> getReserve(PieceColor owner) {
+        return reserves.get(owner);
+    }
+
+    /**
      * @return piece color of the current player
      */
     public PieceColor getCurrentPlayer() {
@@ -153,8 +224,39 @@ public class Board {
      * @param move move to execute
      */
     public void executeMove(Move move) {
+        
+        // Handle DROP (Crazyhouse)
+        if (move.type() == MoveType.DROP) {
+            squares[move.endRow()][move.endCol()] = move.piece();
+
+            // We MUST update the piece's internal coordinates otherwise it still thinks it is at (-1, -1)
+            move.piece().move(move.endRow(), move.endCol());
+
+            removeFromReserve(move.piece().getColor(), move.piece().getType());
+            moveHistory.push(move);
+            return;
+        }
+
         // Remove piece from start
         squares[move.startRow()][move.startCol()] = null;
+
+        // Handle Captures & Reserves
+        Piece captured = move.capturedPiece();
+        if (captured != null) {
+            // Remove from board
+            if (move.type() == MoveType.EN_PASSANT) {
+                int direction = (move.piece().getColor() == PieceColor.WHITE) ? 1 : -1;
+                squares[move.endRow() + direction][move.endCol()] = null;
+            }
+
+            // --- CRAZYHOUSE LOGIC ---
+            if (crazyhouseMode) {
+                PieceType type = captured.getType();
+
+                // Add to the capturer's reserve
+                addToReserve(move.piece().getColor(), type);
+            }
+        }
 
         // Handle Captures (En Passant is special)
         if (move.type() == MoveType.EN_PASSANT) {
@@ -210,6 +312,15 @@ public class Board {
         if (moveHistory.isEmpty()) return;
         Move move = moveHistory.pop();
 
+        // --- HANDLE DROP UNDO ---
+        if (move.type() == MoveType.DROP) {
+            squares[move.endRow()][move.endCol()] = null;
+            // Put back in reserve
+            addToReserve(move.piece().getColor(), move.piece().getType());
+            return;
+        }
+
+        // --- NORMAL UNDO ---
         // Move the acting piece back to the start
         squares[move.startRow()][move.startCol()] = move.piece();
         move.piece().move(move.startRow(), move.startCol());
@@ -228,6 +339,11 @@ public class Board {
             } else {
                 // Normal Capture: Put the dead piece back on the target square
                 squares[move.endRow()][move.endCol()] = captured;
+            }
+
+            // CRAZYHOUSE UNDO: Remove from reserve
+            if (crazyhouseMode) {
+                removeFromReserve(move.piece().getColor(), captured.getType());
             }
         } else {
             // No Capture (Normal move)

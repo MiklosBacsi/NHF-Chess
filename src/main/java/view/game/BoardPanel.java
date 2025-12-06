@@ -33,10 +33,12 @@ public class BoardPanel extends JPanel {
     private int dragOffsetX, dragOffsetY; // To keep the mouse relative to the piece corner
     private Point hoverSquare = null; // Stores x=col, y=row of the square under mouse
     private List<Move> currentLegalMoves = null; // All the squares a piece can legally move to
+    private Piece selectedPiece = null;
+    private List<Move> selectedLegalMoves = null;
 
     // --- Visuals ---
     private BoardTheme currentTheme = BoardTheme.BROWN;
-    private static final int BOARD_PADDING = 20;
+    private  int boardPadding = 20;
     private final Color moveHighlightColor = new Color(255, 255, 0, 96); // Source (Yellow)
     private final Color targetHighlightColor = new Color(255, 255, 255, 100); // Target (White overlay)
     private final Color moveHintColor = new Color(0, 0, 0, 50); // Dark dot for valid squares
@@ -44,6 +46,12 @@ public class BoardPanel extends JPanel {
     private PieceColor viewPerspective = PieceColor.WHITE; // Determines which side is at the bottom of the screen
     private final Set<Point> visibleSquares = new HashSet<>();
     private boolean isBlindMode = false; // "Curtain" for passing turn
+    private static final int RESERVE_SLOT_SIZE = 60;
+    private static final int RESERVE_GAP = 10;
+    // Order of pieces in reserve display
+    private final PieceType[] RESERVE_ORDER = {
+            PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN
+    };
 
     // Cached calculation values to share between paint() and mouse listeners
     private int startX, startY, squareSize;
@@ -76,6 +84,9 @@ public class BoardPanel extends JPanel {
         // Reset Model
         board.resetBoard();
 
+        // Reset padding
+        this.boardPadding = 20;
+
         // Select Rules & Special Setup
         switch (mode) {
             case "Classical":
@@ -89,6 +100,12 @@ public class BoardPanel extends JPanel {
             case "Duck Chess":
                 this.gameRules = new DuckChessVariant();
                 board.placePiece(new Duck(3, 3), 3, 3); // d5
+                break;
+
+            case "Crazyhouse":
+                this.gameRules = new CrazyhouseVariant();
+                board.setCrazyhouseMode(true); // ENABLE RESERVES
+                this.boardPadding = 90;
                 break;
 
             default:
@@ -109,6 +126,8 @@ public class BoardPanel extends JPanel {
         draggedPiece = null;
         hoverSquare = null;
         currentLegalMoves = null;
+        selectedPiece = null;
+        selectedLegalMoves = null;
 
         // Redraw
         repaint();
@@ -180,7 +199,7 @@ public class BoardPanel extends JPanel {
         int width = getWidth();
         int height = getHeight();
 
-        int minimumDimension = Math.min(width, height) - (BOARD_PADDING * 2);
+        int minimumDimension = Math.min(width, height) - (boardPadding * 2);
         if (minimumDimension < 0) minimumDimension = 0;
 
         // Calculate Square Size dynamically, and take the smaller dimension so the board always fits inside the window
@@ -211,6 +230,10 @@ public class BoardPanel extends JPanel {
         Move lastMove = board.getLastMove();
 
         boolean isFoggyGame = (gameRules instanceof FogOfWarVariant);
+
+        // Helper: What are we focusing on? Dragged takes priority, then Selected.
+        Piece activePiece = (draggedPiece != null) ? draggedPiece : selectedPiece;
+        List<Move> activeMoves = (draggedPiece != null) ? currentLegalMoves : selectedLegalMoves;
 
         // Draw the Board & Pieces
         for (int row = 0; row < 8; row++) {
@@ -273,8 +296,8 @@ public class BoardPanel extends JPanel {
                     }
                 }
 
-                // Draw Source Highlight (if this is the start square of the dragged piece)
-                if (draggedPiece != null && draggedPiece.getRow() == row && draggedPiece.getCol() == col) {
+                // Draw Source Highlight (if it's the dragged piece or selected piece)
+                if (activePiece != null && activePiece.getRow() == row && activePiece.getCol() == col) {
                     g2d.setColor(moveHighlightColor);
                     g2d.fillRect(x, y, squareSize, squareSize);
                 }
@@ -306,7 +329,7 @@ public class BoardPanel extends JPanel {
         }
 
         // Draw Move Hints (Dots and Rings)
-        if (draggedPiece != null && currentLegalMoves != null) {
+        if (activePiece != null && activeMoves != null) {
             g2d.setColor(moveHintColor);
 
             // Save the original stroke (thin line) so we can restore it later
@@ -323,7 +346,7 @@ public class BoardPanel extends JPanel {
             int ringDiameter = (int) (squareSize - ringThickness);
             int ringOffset = (int) (ringThickness / 2);
 
-            for (Move move : currentLegalMoves) {
+            for (Move move : activeMoves) {
                 // TRANSFORM DOT POSITION
                 int visualRow = toVisualRow(move.endRow());
                 int visualCol = toVisualCol(move.endCol());
@@ -357,6 +380,11 @@ public class BoardPanel extends JPanel {
         if (draggedPiece != null) {
             // Draw at mouse position (adjusted by offset)
             drawPiece(g2d, draggedPiece, dragX - dragOffsetX, dragY - dragOffsetY);
+        }
+
+        // --- DRAW RESERVES (Only in Crazyhouse) ---
+        if (gameRules instanceof CrazyhouseVariant) {
+            drawReserves(g2d);
         }
     }
 
@@ -397,6 +425,64 @@ public class BoardPanel extends JPanel {
         BufferedImage img = pieceImages.get(key);
         if (img != null) {
             g2d.drawImage(img, x, y, squareSize, squareSize, this);
+        }
+    }
+
+    /**
+     * Helper to draw both reserves (top & bottom).
+     * @param g2d Graphics2D
+     */
+    private void drawReserves(Graphics2D g2d) {
+        // Determine who is Top (Opponent) and Bottom (Self)
+        PieceColor bottomPlayer = viewPerspective;
+        PieceColor topPlayer = bottomPlayer.next();
+
+        // Draw Bottom Reserve (Self)
+        drawSingleReserve(g2d, bottomPlayer, false);
+
+        // Draw Top Reserve (Opponent)
+        drawSingleReserve(g2d, topPlayer, true);
+    }
+
+    /**
+     * Helper to draw a single reserve.
+     * @param g2d Graphics2D
+     * @param color color of the player
+     * @param isTop true for opponent (top), false for self (bottom)
+     */
+    private void drawSingleReserve(Graphics2D g2d, PieceColor color, boolean isTop) {
+        Map<PieceType, Integer> reserve = board.getReserve(color);
+
+        for (int i = 0; i < RESERVE_ORDER.length; i++) {
+            PieceType type = RESERVE_ORDER[i];
+            int count = reserve.getOrDefault(type, 0);
+
+            Rectangle bounds = getReserveSlotBounds(isTop, i);
+
+            // Draw Slot Background (faint box)
+            g2d.setColor(new Color(0, 0, 0, 50));
+            g2d.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 10, 10);
+
+            // Draw Piece Icon (if count > 0)
+            if (count > 0) {
+                String key = color.name().toLowerCase() + "-" + type.name().toLowerCase();
+                BufferedImage img = pieceImages.get(key);
+                if (img != null) {
+                    // Draw centered in slot
+                    int padding = 5;
+                    g2d.drawImage(img, bounds.x + padding, bounds.y + padding,
+                            bounds.width - 2*padding, bounds.height - 2*padding, this);
+                }
+
+                // Draw Count Badge
+                g2d.setColor(Color.WHITE);
+                g2d.fillOval(bounds.x + bounds.width - 20, bounds.y + bounds.height - 20, 20, 20);
+
+                g2d.setColor(Color.BLACK);
+                g2d.setFont(new Font("Arial", Font.BOLD, 12));
+                // Center text roughly
+                g2d.drawString(String.valueOf(count), bounds.x + bounds.width - 14, bounds.y + bounds.height - 5);
+            }
         }
     }
 
@@ -482,6 +568,158 @@ public class BoardPanel extends JPanel {
         }
     }
 
+    /**
+     * Calculates the screen bounds for a specific reserve slot.
+     * @param isTop true for opponent (top), false for self (bottom)
+     * @param slotIndex 0...4 (Pawn...Queen)
+     * @return screen bounds for given reserve slot
+     */
+    private Rectangle getReserveSlotBounds(boolean isTop, int slotIndex) {
+        int totalWidth = (RESERVE_ORDER.length * RESERVE_SLOT_SIZE) + ((RESERVE_ORDER.length - 1) * RESERVE_GAP);
+        int startX = (getWidth() - totalWidth) / 2;
+
+        int y;
+        if (isTop) {
+            y = startY - RESERVE_SLOT_SIZE - 20;
+        } else {
+            y = startY + (squareSize * 8) + 20;
+        }
+
+        int x = startX + (slotIndex * (RESERVE_SLOT_SIZE + RESERVE_GAP));
+
+        return new Rectangle(x, y, RESERVE_SLOT_SIZE, RESERVE_SLOT_SIZE);
+    }
+
+    /**
+     * Helper to handle turn-switching, rules and game over checks
+     * @param move move that was made
+     */
+    private void finalizeTurn(Move move) {
+
+        // Execute the Move on the Board
+        board.executeMove(move);
+
+        // Check Win Condition (King Capture)
+        if (move.capturedPiece() != null && move.capturedPiece().getType() == PieceType.KING) {
+            System.out.println("---------------------------------------");
+            System.out.println("GAME OVER! " + move.piece().getColor() + " captured the King!");
+            System.out.println("---------------------------------------");
+            isGameOver = true;
+            repaint();
+            return;
+        }
+
+        // Handle Rules (Duck / Classical)
+        if (gameRules instanceof DuckChessVariant) {
+            if (move.type() == model.MoveType.DUCK) {
+                board.setWaitingForDuck(false);
+                board.switchTurn();
+                viewPerspective = board.getCurrentPlayer();
+            } else {
+                board.setWaitingForDuck(true);
+            }
+        } else {
+            // Classical / Fog / Others
+            board.switchTurn();
+            viewPerspective = board.getCurrentPlayer();
+        }
+
+        // Fog of War Logic
+        if (gameRules instanceof model.rules.FogOfWarVariant) {
+            isBlindMode = true;
+            repaint();
+            SwingUtilities.invokeLater(() -> {
+                Frame parent = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
+                new PassTurnDialog(parent, board.getCurrentPlayer()).setVisible(true);
+                isBlindMode = false;
+                calculateVisibility();
+                repaint();
+            });
+        }
+
+        // Checkmate / Stalemate Checks
+        if (!isGameOver && !board.isWaitingForDuck()) {
+            PieceColor activePlayer = board.getCurrentPlayer();
+            if (gameRules.isCheckmate(board, activePlayer)) {
+                PieceColor winner = activePlayer.next();
+                System.out.println("CHECKMATE! " + winner + " wins!");
+                isGameOver = true;
+            } else if (gameRules.isStalemate(board, activePlayer)) {
+                System.out.println("STALEMATE!");
+                isGameOver = true;
+            }
+        }
+
+        // Clear Selections
+        selectedPiece = null;
+        selectedLegalMoves = null;
+        draggedPiece = null;
+        currentLegalMoves = null;
+
+        repaint();
+    }
+
+    /**
+     * Helper: extract Promotion Dialog Logic
+     * @param move promotion move that was made (moving the pawn to the opposite row)
+     * @return transformed move that is now promotion move
+     */
+    private Move handlePromotion(Move move) {
+        if (move.type() == model.MoveType.PROMOTION) {
+            Frame parent = (Frame) SwingUtilities.getWindowAncestor(this);
+            PromotionDialog dialog = new PromotionDialog(parent, move.piece().getColor());
+            dialog.setVisible(true);
+            return new Move(move, dialog.getSelectedType());
+        }
+        return move;
+    }
+
+    /**
+     * Handles when we click in a reserve.
+     * @param mouseX x coordinate of the mouse
+     * @param mouseY y coordinate of the mouse
+     */
+    private void checkReserveClick(int mouseX, int mouseY) {
+        // We can only interact with OUR reserve (Bottom)
+        PieceColor myColor = board.getCurrentPlayer();
+
+        for (int i = 0; i < RESERVE_ORDER.length; i++) {
+            Rectangle bounds = getReserveSlotBounds(false, i); // false = bottom
+
+            if (bounds.contains(mouseX, mouseY)) {
+                PieceType type = RESERVE_ORDER[i];
+                int count = board.getReserveCount(myColor, type);
+
+                if (count > 0) {
+                    // HIT! We clicked a piece in reserve.
+
+                    // Create a "Virtual" Piece for dragging (We use -1, -1 to indicate it's not on the board)
+                    Piece virtualPiece;
+                    switch (type) {
+                        case ROOK -> virtualPiece = new model.pieces.Rook(myColor, -1, -1);
+                        case KNIGHT -> virtualPiece = new model.pieces.Knight(myColor, -1, -1);
+                        case BISHOP -> virtualPiece = new model.pieces.Bishop(myColor, -1, -1);
+                        case QUEEN -> virtualPiece = new model.pieces.Queen(myColor, -1, -1);
+                        default -> virtualPiece = new model.pieces.Pawn(myColor, -1, -1);
+                    }
+
+                    // Set Drag State
+                    draggedPiece = virtualPiece;
+                    currentLegalMoves = gameRules.getLegalMoves(board, virtualPiece);
+
+                    // Set Visual Offsets (Center piece on mouse)
+                    dragX = mouseX;
+                    dragY = mouseY;
+                    dragOffsetX = squareSize / 2;
+                    dragOffsetY = squareSize / 2;
+
+                    repaint();
+                }
+                return;
+            }
+        }
+    }
+
 
     /**
      * --- Inner Class for Mouse Handling ---
@@ -500,36 +738,74 @@ public class BoardPanel extends JPanel {
 
             Point coords = getBoardCoordinates(e.getX(), e.getY());
 
-            // Checks if we clicked a valid square
-            if (coords != null) {
-                Piece clickedPiece = board.getPiece(coords.y, coords.x);
+            // Reserve Logic
+            if (coords == null && gameRules instanceof CrazyhouseVariant) {
+                // We clicked outside the board in Crazyhouse mode. Did we click the reserve?
+                checkReserveClick(e.getX(), e.getY());
+                return;
+            }
 
-                // Checks if another piece is already there
-                if (clickedPiece != null) {
+            if (coords == null) {
+                // Clicked outside board -> Deselect everything
+                selectedPiece = null;
+                selectedLegalMoves = null;
+                repaint();
+                return;
+            }
 
-                    // Turn Validation
-                    if (clickedPiece.getColor() != board.getCurrentPlayer() && clickedPiece.getColor() != PieceColor.SPECIAL) {
-                        System.out.println("Not your turn!");
-                        return; // Ignore click
+            int clickedRow = coords.y;
+            int clickedCol = coords.x;
+
+            // --- CLICK TO MOVE LOGIC ---
+            // If we have a selected piece, and we clicked on a valid move dot
+            if (selectedPiece != null && selectedLegalMoves != null) {
+                for (Move m : selectedLegalMoves) {
+                    if (m.endRow() == clickedRow && m.endCol() == clickedCol) {
+
+                        // Handle Promotion (if needed)
+                        Move finalMove = handlePromotion(m);
+
+                        // EXECUTE MOVE
+                        finalizeTurn(finalMove);
+                        return; // Stop here, we moved!
                     }
-
-                    draggedPiece = clickedPiece;
-                    hoverSquare = coords;
-                    currentLegalMoves = gameRules.getLegalMoves(board, draggedPiece);
-
-                    dragX = e.getX();
-                    dragY = e.getY();
-
-                    // Calculate visual offset (so piece doesn't jump to top-left of mouse)
-                    int visualRow = toVisualRow(coords.y);
-                    int visualCol = toVisualCol(coords.x);
-                    int pieceX = startX + (visualCol * squareSize);
-                    int pieceY = startY + (visualRow * squareSize);
-                    dragOffsetX = e.getX() - pieceX;
-                    dragOffsetY = e.getY() - pieceY;
-
-                    repaint();
                 }
+            }
+
+            // --- DRAG START LOGIC ---
+            Piece clickedPiece = board.getPiece(clickedRow, clickedCol);
+
+            if (clickedPiece != null) {
+                // Turn Validation
+                if (clickedPiece.getColor() != board.getCurrentPlayer() && clickedPiece.getColor() != PieceColor.SPECIAL) {
+                    // Clicked enemy -> Deselect
+                    selectedPiece = null;
+                    selectedLegalMoves = null;
+                    repaint();
+                    return;
+                }
+
+                // Setup Drag
+                draggedPiece = clickedPiece;
+                hoverSquare = coords;
+                currentLegalMoves = gameRules.getLegalMoves(board, draggedPiece);
+
+                // Visual offsets
+                dragX = e.getX();
+                dragY = e.getY();
+                int visualRow = toVisualRow(coords.y);
+                int visualCol = toVisualCol(coords.x);
+                int pieceX = startX + (visualCol * squareSize);
+                int pieceY = startY + (visualRow * squareSize);
+                dragOffsetX = e.getX() - pieceX;
+                dragOffsetY = e.getY() - pieceY;
+
+                repaint();
+            } else {
+                // Clicked empty square -> Deselect
+                selectedPiece = null;
+                selectedLegalMoves = null;
+                repaint();
             }
         }
 
@@ -558,139 +834,39 @@ public class BoardPanel extends JPanel {
         public void mouseReleased(MouseEvent e) {
             if (draggedPiece != null) {
                 Point coords = getBoardCoordinates(e.getX(), e.getY());
+                boolean moveExecuted = false;
 
                 // Check if dropped on board
                 if (coords != null) {
                     int targetRow = coords.y;
                     int targetCol = coords.x;
 
-                    boolean isValid = false;
-
-                    // Check if the move is Possible
+                    // Try to Move
                     if (currentLegalMoves != null) {
                         for (Move m : currentLegalMoves) {
                             if (m.endRow() == targetRow && m.endCol() == targetCol) {
-                                isValid = true;
-
-                                // --- PROMOTION LOGIC ---
-                                Move finalMove = m;
-
-                                if (m.type() == model.MoveType.PROMOTION) {
-                                    // Open the Dialog
-                                    // We find the parent Frame to center the dialog correctly
-                                    Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
-                                    PromotionDialog dialog = new PromotionDialog(parentFrame, m.piece().getColor());
-                                    dialog.setVisible(true); // This halts code execution until dialog closes
-
-                                    // Get Selection
-                                    PieceType choice = dialog.getSelectedType();
-
-                                    // Create a NEW Move with the specific choice
-                                    finalMove = new Move(m, choice);
-                                }
-
-                                // --- CHECK FOR KING CAPTURE (Duck Chess) ---
-                                if (finalMove.capturedPiece() != null && finalMove.capturedPiece().getType() == PieceType.KING) {
-                                    System.out.println("---------------------------------------");
-                                    System.out.println("GAME OVER! " + finalMove.piece().getColor() + " captured the King!");
-                                    System.out.println("---------------------------------------");
-
-                                    // LOCK THE GAME
-                                    isGameOver = true;
-
-                                    // Execute move visually so we see the capture
-                                    board.executeMove(finalMove);
-                                    draggedPiece = null;
-                                    repaint();
-                                    return; // Stop here!
-                                }
-
-                                // Execute Move in Model
-                                board.executeMove(finalMove);
-
-                                // --- FOG OF WAR LOGIC ---
-                                if (gameRules instanceof FogOfWarVariant) {
-                                    board.switchTurn();
-                                    viewPerspective = board.getCurrentPlayer();
-
-                                    // Enable Blind Mode (Hide everything)
-                                    isBlindMode = true;
-                                    repaint(); // Force draw fog immediately
-
-                                    // Show Modal Dialog (halts the thread)
-                                    SwingUtilities.invokeLater(() -> {
-                                        Frame parent = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
-                                        new PassTurnDialog(parent, board.getCurrentPlayer()).setVisible(true);
-
-                                        // Dialog Closed -> Unblind and update
-                                        isBlindMode = false;
-                                        calculateVisibility(); // Calculate for NEW player
-                                        repaint();
-                                    });
-                                }
-                                // --- HANDLE DUCK LOGIC (+ Turn Switching) ---
-                                else if (gameRules instanceof DuckChessVariant) {
-                                    if (m.type() == MoveType.DUCK) {
-                                        // Duck moved -> Turn Over!
-                                        board.setWaitingForDuck(false);
-                                        board.switchTurn();
-                                        viewPerspective = board.getCurrentPlayer(); // Rotate view to match the new player
-                                    } else {
-                                        // Normal move -> Now waiting for Duck!
-                                        board.setWaitingForDuck(true);
-                                        // DO NOT switch turn
-                                        // DO NOT rotate view
-                                    }
-                                } else {
-                                    // --- CLASSICAL LOGIC ---
-                                    board.switchTurn();
-                                    viewPerspective = board.getCurrentPlayer();
-                                }
-
-                                // --- CHECK FOR END GAME CONDITIONS (only if turn actually switched) ---
-                                if (!isGameOver && !board.isWaitingForDuck()) {
-                                    // We check the status of the player whose turn it is NOW.
-                                    PieceColor activePlayer = board.getCurrentPlayer();
-
-                                    // Checkmate
-                                    if (gameRules.isCheckmate(board, activePlayer)) {
-                                        // If active player is mated, the previous player won
-                                        PieceColor winner = activePlayer.next();
-                                        System.out.println("---------------------------------------");
-                                        System.out.println("CHECKMATE! " + winner + " wins!");
-                                        System.out.println("---------------------------------------");
-
-                                        // LOCK THE GAME
-                                        isGameOver = true;
-                                    }
-                                    // Stalemate
-                                    else if (gameRules.isStalemate(board, activePlayer)) {
-
-                                        // Check specific variant rule
-                                        if (gameRules instanceof DuckChessVariant) {
-                                            // DUCK CHESS RULE: The player who cannot move WINS!
-                                            System.out.println("---------------------------------------");
-                                            System.out.println("STALEMATE! " + activePlayer + " has no moves and WINS!");
-                                            System.out.println("---------------------------------------");
-                                        } else {
-                                            // CLASSICAL RULE: It is a Draw
-                                            System.out.println("---------------------------------------");
-                                            System.out.println("STALEMATE! The game is a draw.");
-                                            System.out.println("---------------------------------------");
-                                        }
-
-                                        // LOCK THE GAME
-                                        isGameOver = true;
-                                    }
-                                }
-
+                                // Handle Promotion
+                                Move finalMove = handlePromotion(m);
+                                finalizeTurn(finalMove); // EXECUTE
+                                moveExecuted = true;
                                 break;
                             }
                         }
                     }
+                }
 
-                    if (!isValid) {
-                        System.out.println("Invalid Move! Snapping back.");
+                // Handle Drop Logic (If NOT moved)
+                if (!moveExecuted) {
+                    // If we dragged and dropped back on the same square (or invalid square), then we treat it as a "Click/Select" action.
+
+                    if (selectedPiece == draggedPiece) {
+                        // Was selected, clicked again -> DESELECT
+                        selectedPiece = null;
+                        selectedLegalMoves = null;
+                    } else {
+                        // Was not selected (or different) -> SELECT
+                        selectedPiece = draggedPiece;
+                        selectedLegalMoves = currentLegalMoves;
                     }
                 }
 
