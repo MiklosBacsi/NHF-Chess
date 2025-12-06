@@ -329,7 +329,7 @@ public class BoardPanel extends JPanel {
         }
 
         // Draw Move Hints (Dots and Rings)
-        if (activePiece != null && activeMoves != null) {
+        if (activePiece != null && activeMoves != null && !isGameOver) {
             g2d.setColor(moveHintColor);
 
             // Save the original stroke (thin line) so we can restore it later
@@ -642,7 +642,9 @@ public class BoardPanel extends JPanel {
             PieceColor activePlayer = board.getCurrentPlayer();
             if (gameRules.isCheckmate(board, activePlayer)) {
                 PieceColor winner = activePlayer.next();
+                System.out.println("---------------------------------------");
                 System.out.println("CHECKMATE! " + winner + " wins!");
+                System.out.println("---------------------------------------");
                 isGameOver = true;
             } else if (gameRules.isStalemate(board, activePlayer)) {
                 System.out.println("STALEMATE!");
