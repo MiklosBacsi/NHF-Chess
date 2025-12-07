@@ -41,8 +41,6 @@ public class GameController {
      * @param mode chosen game variant
      */
     public void startNewGame(String mode) {
-        System.out.println("Starting new game: " + mode);
-
         // Reset the logic and view state
         view.startNewGame(mode);
 
@@ -51,8 +49,8 @@ public class GameController {
     }
 
     /**
-     *
-     * @param scene
+     * Shows given scene.
+     * @param scene scene to be shown
      */
     public void showScene(String scene) {
         view.showCard(scene);

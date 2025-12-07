@@ -12,8 +12,12 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
-import java.util.*;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * This class is responsible for the visual representation of the chess board and its pieces.
@@ -785,6 +789,23 @@ public class BoardPanel extends JPanel {
     }
 
     /**
+     * Shows game over dialog at the end of game.
+     * @param message message that is shown on the dialog
+     */
+    private void showGameOverDialog(String message) {
+        // Lock the game
+        isGameOver = true;
+
+        // Clear visual artifacts (dots, highlights)
+        clearSelections();
+
+        // Show the Popup
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(this, message, "Game Over", JOptionPane.INFORMATION_MESSAGE);
+        });
+    }
+
+    /**
      * @param color color of player
      * @return rgb color of player
      */
@@ -835,11 +856,8 @@ public class BoardPanel extends JPanel {
 
             // Check Chaturaji End Conditions (3 Kings Dead)
             if (board.getAlivePlayerCount() <= 1) { // 3 dead = 1 alive
-                System.out.println("---------------------------------------");
-                System.out.println("GAME OVER! All enemies defeated.");
-                printChaturajiStandings();
-                System.out.println("---------------------------------------");
                 isGameOver = true;
+                printChaturajiStandings();
             } else {
                 board.switchTurn();
                 viewPerspective = board.getCurrentPlayer();
@@ -851,11 +869,8 @@ public class BoardPanel extends JPanel {
 
         // Check Win Condition (King Capture)
         if (move.capturedPiece() != null && move.capturedPiece().getType() == PieceType.KING) {
-            System.out.println("---------------------------------------");
-            System.out.println("GAME OVER! " + move.piece().getColor() + " captured the King!");
-            System.out.println("---------------------------------------");
-            isGameOver = true;
-            clearSelections();
+            String winner = move.piece().getColor().toString();
+            showGameOverDialog("GAME OVER!\n" + winner + " captured the King and WINS!");
             return;
         }
 
@@ -891,15 +906,23 @@ public class BoardPanel extends JPanel {
         // Checkmate / Stalemate Checks
         if (!isGameOver && !board.isWaitingForDuck()) {
             PieceColor activePlayer = board.getCurrentPlayer();
+
+            // Checkmate
             if (gameRules.isCheckmate(board, activePlayer)) {
                 PieceColor winner = activePlayer.next();
-                System.out.println("---------------------------------------");
-                System.out.println("CHECKMATE! " + winner + " wins!");
-                System.out.println("---------------------------------------");
-                isGameOver = true;
-            } else if (gameRules.isStalemate(board, activePlayer)) {
-                System.out.println("STALEMATE!");
-                isGameOver = true;
+                showGameOverDialog("CHECKMATE!\n" + winner + " wins!");
+            }
+            // Stalemate
+            else if (gameRules.isStalemate(board, activePlayer)) {
+                String message;
+                if (gameRules instanceof model.rules.DuckChessVariant) {
+                    // Duck Chess Special Rule
+                    message = "STALEMATE!\n" + activePlayer + " has no moves and WINS!";
+                } else {
+                    // Standard Rule
+                    message = "STALEMATE!\nThe game is a draw.";
+                }
+                showGameOverDialog(message);
             }
         }
 
@@ -923,17 +946,15 @@ public class BoardPanel extends JPanel {
      * Helper to print scores and winners in Chaturaji.
      */
     private void printChaturajiStandings() {
-        System.out.println("FINAL SCORES:");
         PieceColor[] players = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
 
         int maxScore = -1;
-        java.util.List<PieceColor> winners = new java.util.ArrayList<>();
+        List<PieceColor> winners = new ArrayList<>();
 
         StringBuilder sb = new StringBuilder("GAME OVER!\n\nFinal Scores:\n");
 
         for (PieceColor player : players) {
             int score = board.getScore(player);
-            System.out.println(player + ": " + score);
 
             sb.append(player).append(": ").append(score).append("\n");
 
@@ -961,7 +982,6 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        System.out.println(winnerMsg);
         sb.append(winnerMsg).append("!");
 
         clearSelections();
