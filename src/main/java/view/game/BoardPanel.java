@@ -119,7 +119,7 @@ public class BoardPanel extends JPanel {
                 setupChaturajiBoard();
                 this.viewPerspective = PieceColor.RED;
                 board.setCurrentPlayer(PieceColor.RED);
-                this.boardPadding = 120;
+                this.boardPadding = 50;
                 break;
 
             default:
@@ -352,7 +352,8 @@ public class BoardPanel extends JPanel {
 
 
                 // Determine color of square
-                if ((row + col) % 2 == 0) {
+                boolean isLightSquare = (row + col) % 2 == 0;
+                if (isLightSquare) {
                     g2d.setColor(currentTheme.getLight());
                 } else {
                     g2d.setColor(currentTheme.getDark());
@@ -360,6 +361,51 @@ public class BoardPanel extends JPanel {
 
                 // Draw the square (Background)
                 g2d.fillRect(x, y, squareSize, squareSize);
+
+                // --- DRAW COORDINATES ---
+                int fontSize = Math.max(12, squareSize / 5);
+                g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
+
+                // Text Color: Inverse of the square color
+                if (isLightSquare) g2d.setColor(currentTheme.getDark());
+                else g2d.setColor(currentTheme.getLight());
+
+                int padding = fontSize / 4;
+
+                // Determine if board is "Upright" (Red/Yellow/White/Black) or "Sideways" (Blue/Green)
+                boolean isUpright = (viewPerspective == PieceColor.RED ||
+                        viewPerspective == PieceColor.YELLOW ||
+                        viewPerspective == PieceColor.WHITE ||
+                        viewPerspective == PieceColor.BLACK);
+
+                // LEFT EDGE (Visual Vertical Axis)
+                if (visualCol == 0) {
+                    String label;
+                    if (isUpright) {
+                        // Standard: Vertical axis shows Ranks (1-8)
+                        label = String.valueOf(8 - row);
+                    } else {
+                        // Sideways: Vertical axis shows Files (a-h)
+                        label = String.valueOf((char)('a' + col));
+                    }
+                    g2d.drawString(label, x + padding, y + fontSize);
+                }
+
+                // BOTTOM EDGE (Visual Horizontal Axis)
+                if (visualRow == 7) {
+                    String label;
+                    if (isUpright) {
+                        // Standard: Horizontal axis shows Files (a-h)
+                        label = String.valueOf((char)('a' + col));
+                    } else {
+                        // Sideways: Horizontal axis shows Ranks (1-8)
+                        label = String.valueOf(8 - row);
+                    }
+
+                    int textWidth = g2d.getFontMetrics().stringWidth(label);
+                    g2d.drawString(label, x + squareSize - textWidth - (padding * 3 / 4), y + squareSize - padding);
+                }
+
 
                 // IF NOT VISIBLE -> DRAW FOG AND SKIP CONTENT
                 if (!isVisible) {
@@ -713,7 +759,7 @@ public class BoardPanel extends JPanel {
         switch (relativePos) {
             case 0: // BOTTOM (Self)
                 x = startX + (squareSize * 4) - (w / 2); // Center X
-                y = startY + (squareSize * 8) + h + padding; // Below board
+                y = startY + (squareSize * 8) + h; // Below board
                 break;
             case 1: // LEFT
                 x = startX - w - padding; // Left of board
@@ -731,7 +777,7 @@ public class BoardPanel extends JPanel {
 
         // Draw Background Bubble
         g2d.setColor(new Color(0, 0, 0, 150));
-        g2d.fillRoundRect(x - 5, y - h + 5, w + 10, h + 5, 10, 10);
+        g2d.fillRoundRect(x - 5, y - h + 5, w + 10, h, 10, 10);
 
         // Draw Text (Color-coded)
         g2d.setColor(getColorForPlayer(color));
