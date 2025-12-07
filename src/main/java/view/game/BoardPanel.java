@@ -1,7 +1,7 @@
 package view.game;
 
 import model.*;
-import model.pieces.Duck;
+import model.pieces.*;
 import model.rules.*;
 
 import javax.imageio.ImageIO;
@@ -84,6 +84,8 @@ public class BoardPanel extends JPanel {
         // Reset Model
         board.resetBoard();
 
+        this.viewPerspective = PieceColor.WHITE;
+
         // Reset padding
         this.boardPadding = 20;
 
@@ -91,29 +93,40 @@ public class BoardPanel extends JPanel {
         switch (mode) {
             case "Classical":
                 this.gameRules = new ClassicalVariant();
+                board.addStandardPieces();
                 break;
 
             case "Fog of War":
                 this.gameRules = new FogOfWarVariant();
+                board.addStandardPieces();
                 break;
 
             case "Duck Chess":
                 this.gameRules = new DuckChessVariant();
+                board.addStandardPieces();
                 board.placePiece(new Duck(3, 3), 3, 3); // d5
                 break;
 
             case "Crazyhouse":
                 this.gameRules = new CrazyhouseVariant();
+                board.addStandardPieces();
                 board.setCrazyhouseMode(true); // ENABLE RESERVES
                 this.boardPadding = 90;
                 break;
 
+            case "Chaturaji":
+                this.gameRules = new ChaturajiVariant();
+                setupChaturajiBoard();
+                this.viewPerspective = PieceColor.RED;
+                board.setCurrentPlayer(PieceColor.RED);
+                this.boardPadding = 120;
+                break;
+
             default:
                 this.gameRules = new ClassicalVariant(); // Fallback
+                board.addStandardPieces();
                 break;
         }
-
-        this.viewPerspective = PieceColor.WHITE;
 
         // Calculate initial visibility for White
         if (gameRules instanceof FogOfWarVariant) {
@@ -123,6 +136,7 @@ public class BoardPanel extends JPanel {
         isGameOver = false;
 
         // Clear UI state
+        isBlindMode = false;
         draggedPiece = null;
         hoverSquare = null;
         currentLegalMoves = null;
@@ -131,6 +145,60 @@ public class BoardPanel extends JPanel {
 
         // Redraw
         repaint();
+    }
+
+    /**
+     * Sets up board and pieces for Chaturaji.
+     */
+    private void setupChaturajiBoard() {
+        board.resetBoard(); // Clears everything
+
+        // --- RED (Bottom-Left) ---
+        // Pieces row 7, Pawns row 6 (Cols 0-3)
+        board.placePiece(new Boat(PieceColor.RED, 7, 0), 7, 0);   // a1
+        board.placePiece(new Knight(PieceColor.RED, 7, 1), 7, 1); // b1
+        board.placePiece(new Bishop(PieceColor.RED, 7, 2), 7, 2); // c1
+        board.placePiece(new King(PieceColor.RED, 7, 3), 7, 3);   // d1
+        board.placePiece(new Pawn(PieceColor.RED, 6, 0), 6, 0);   // a2
+        board.placePiece(new Pawn(PieceColor.RED, 6, 1), 6, 1);   // b2
+        board.placePiece(new Pawn(PieceColor.RED, 6, 2), 6, 2);   // c2
+        board.placePiece(new Pawn(PieceColor.RED, 6, 3), 6, 3);   // d2
+
+        // --- GREEN (Bottom-Right) ---
+        // Pieces col 7, Pawns col 6 (Rows 4-7)
+        // Order from bottom to top: Boat, Knight, Bishop, King
+        board.placePiece(new Boat(PieceColor.GREEN, 7, 7), 7, 7);   // h1
+        board.placePiece(new Knight(PieceColor.GREEN, 6, 7), 6, 7); // h2
+        board.placePiece(new Bishop(PieceColor.GREEN, 5, 7), 5, 7); // h3
+        board.placePiece(new King(PieceColor.GREEN, 4, 7), 4, 7);   // h4
+        board.placePiece(new Pawn(PieceColor.GREEN, 7, 6), 7, 6);   // g1
+        board.placePiece(new Pawn(PieceColor.GREEN, 6, 6), 6, 6);   // g2
+        board.placePiece(new Pawn(PieceColor.GREEN, 5, 6), 5, 6);   // g3
+        board.placePiece(new Pawn(PieceColor.GREEN, 4, 6), 4, 6);   // g4
+
+        // --- YELLOW (Top-Right) ---
+        // Pieces row 0, Pawns row 1 (Cols 4-7)
+        // Order Right-to-Left: Boat, Knight, Bishop, King
+        board.placePiece(new Boat(PieceColor.YELLOW, 0, 7), 0, 7);   // h8
+        board.placePiece(new Knight(PieceColor.YELLOW, 0, 6), 0, 6); // g8
+        board.placePiece(new Bishop(PieceColor.YELLOW, 0, 5), 0, 5); // f8
+        board.placePiece(new King(PieceColor.YELLOW, 0, 4), 0, 4);   // e8
+        board.placePiece(new Pawn(PieceColor.YELLOW, 1, 7), 1, 7);   // h7
+        board.placePiece(new Pawn(PieceColor.YELLOW, 1, 6), 1, 6);   // g7
+        board.placePiece(new Pawn(PieceColor.YELLOW, 1, 5), 1, 5);   // f7
+        board.placePiece(new Pawn(PieceColor.YELLOW, 1, 4), 1, 4);   // e7
+
+        // --- BLUE (Top-Left) ---
+        // Pieces col 0, Pawns col 1 (Rows 0-3)
+        // Order Top-to-Bottom: Boat, Knight, Bishop, King
+        board.placePiece(new Boat(PieceColor.BLUE, 0, 0), 0, 0);   // a8
+        board.placePiece(new Knight(PieceColor.BLUE, 1, 0), 1, 0); // a7
+        board.placePiece(new Bishop(PieceColor.BLUE, 2, 0), 2, 0); // a6
+        board.placePiece(new King(PieceColor.BLUE, 3, 0), 3, 0);   // a5
+        board.placePiece(new Pawn(PieceColor.BLUE, 0, 1), 0, 1);   // b8
+        board.placePiece(new Pawn(PieceColor.BLUE, 1, 1), 1, 1);   // b7
+        board.placePiece(new Pawn(PieceColor.BLUE, 2, 1), 2, 1);   // b6
+        board.placePiece(new Pawn(PieceColor.BLUE, 3, 1), 3, 1);   // b5
     }
 
     /**
@@ -168,6 +236,31 @@ public class BoardPanel extends JPanel {
             if (url != null) pieceImages.put("special-duck", ImageIO.read(url));
         } catch (IOException e) {
             e.printStackTrace();
+        }
+
+        // Chaturaji
+        String[] chaturajiColors = {"red", "blue", "yellow", "green", "grey"};
+        String[] chaturajiTypes = {"pawn", "boat", "knight", "bishop", "king"};
+
+        for (String c : chaturajiColors) {
+            for (String t : chaturajiTypes) {
+                // The key will be "red-boat" (matches Piece.getFilename())
+                String key = c + "-" + t;
+
+                // The path matches your structure: /piece/red/boat.png
+                String path = "/piece/" + c + "/" + t + ".png";
+
+                try {
+                    URL url = getClass().getResource(path);
+                    if (url != null) {
+                        pieceImages.put(key, ImageIO.read(url));
+                    } else {
+                        System.err.println("Image not found: " + path);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -239,8 +332,8 @@ public class BoardPanel extends JPanel {
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
                 // TRANSFORM TO VISUAL COORDS
-                int visualRow = toVisualRow(row);
-                int visualCol = toVisualCol(col);
+                int visualRow = getVisualRow(row, col);
+                int visualCol = getVisualCol(row, col);
 
                 int x = startX + (visualCol * squareSize);
                 int y = startY + (visualRow * squareSize);
@@ -329,7 +422,7 @@ public class BoardPanel extends JPanel {
         }
 
         // Draw Move Hints (Dots and Rings)
-        if (activePiece != null && activeMoves != null && !isGameOver) {
+        if (activePiece != null && activeMoves != null) {
             g2d.setColor(moveHintColor);
 
             // Save the original stroke (thin line) so we can restore it later
@@ -348,8 +441,8 @@ public class BoardPanel extends JPanel {
 
             for (Move move : activeMoves) {
                 // TRANSFORM DOT POSITION
-                int visualRow = toVisualRow(move.endRow());
-                int visualCol = toVisualCol(move.endCol());
+                int visualRow = getVisualRow(move.endRow(), move.endCol());
+                int visualCol = getVisualCol(move.endRow(), move.endCol());
 
                 int gx = startX + (visualCol * squareSize);
                 int gy = startY + (visualRow * squareSize);
@@ -386,6 +479,9 @@ public class BoardPanel extends JPanel {
         if (gameRules instanceof CrazyhouseVariant) {
             drawReserves(g2d);
         }
+
+        // --- DRAW SCORES (Chaturaji) ---
+        drawScores(g2d);
     }
 
     /**
@@ -502,70 +598,156 @@ public class BoardPanel extends JPanel {
         // Validate bounds
         if (visualCol >= 0 && visualCol < 8 && visualRow >= 0 && visualRow < 8) {
             // Convert to Model Coordinates
-            int modelRow = toModelRow(visualRow);
-            int modelCol = toModelCol(visualCol);
-            return new Point(modelCol, modelRow);
+            return getModelCoordinatesFromVisual(visualRow, visualCol);
         }
         // Outside the board
         return null;
     }
 
     /**
-     * Converts Model Row (0..7) to Visual Row (0..7) based on perspective.
-     * If WHITE view: Row 0 is top, Row 7 is bottom (Standard).
-     * If BLACK view: Row 0 is bottom, Row 7 is top (Rotated by 180 degrees).
+     * Converts MODEL (row,col) -> VISUAL (vrow,vcol).
+     * @param row row index in model
+     * @param col column index in model
+     * @return visual row index
      */
-    private int toVisualRow(int modelRow) {
-        if (viewPerspective == PieceColor.WHITE) {
-            return modelRow;
-        } else {
-            return 7 - modelRow;
-        }
+    private int getVisualRow(int row, int col) {
+        return switch (viewPerspective) {
+            case RED, WHITE -> row;              // No rotation
+            case YELLOW, BLACK -> 7 - row;       // 180 degrees
+            case BLUE -> 7 - col;         // 90 degrees CW (Left becomes Bottom)
+            case GREEN -> col;            // 270 degrees CW (Right becomes Bottom)
+            default -> row;
+        };
     }
 
     /**
-     * Converts Model Column (0..7) to Visual Column (0..7) based on perspective.
-     * If WHITE view: Column 0 is left, Column 7 is right (Standard).
-     * If BLACK view: Column right is bottom, Column 7 is left (Rotated by 180 degrees).
-     * @param modelCol model column index
+     * Converts MODEL (row,col) -> VISUAL (vrow,vcol).
+     * @param row row index in model
+     * @param col column index in model
      * @return visual column index
      */
-    private int toVisualCol(int modelCol) {
-        if (viewPerspective == PieceColor.WHITE) {
-            return modelCol;
-        } else {
-            return 7 - modelCol;
-        }
+    private int getVisualCol(int row, int col) {
+        return switch (viewPerspective) {
+            case RED, WHITE -> col;       // No rotation
+            case YELLOW, BLACK -> 7 - col;    // 180 degrees
+            case BLUE -> row;             // 90 degrees CW
+            case GREEN -> 7 - row;        // 270 degrees CW
+            default -> col;
+        };
     }
 
     /**
-     * Converts Visual coordinates (what we clicked) back to Model coordinates.
-     * For 180-degree rotation, the math is identical (X = 7 - X),
-     * but we separate it in case we add 90-degree rotation.
-     * @param visualRow visual row index
-     * @return model row index
+     * Converts VISUAL (vrow,vcol) -> MODEL (row,col). (Used for Mouse Clicking)
+     * @param vrow visual row index
+     * @param vcol visual column index
+     * @return square in model
      */
-    private int toModelRow(int visualRow) {
-        if (viewPerspective == PieceColor.WHITE) {
-            return visualRow;
-        } else {
-            return 7 - visualRow;
+    private Point getModelCoordinatesFromVisual(int vrow, int vcol) {
+        int row = 0, col = 0;
+        switch (viewPerspective) {
+            case RED, WHITE:    row = vrow; col = vcol; break;
+            case YELLOW, BLACK: row = 7 - vrow; col = 7 - vcol; break;
+            case BLUE:   row = vcol; col = 7 - vrow; break; // Inverse of (7-c, r)
+            case GREEN:  row = 7 - vcol; col = vrow; break; // Inverse of (c, 7-r)
+            default:     row = vrow; col = vcol; break;
         }
+        return new Point(col, row); // Point is (x=col, y=row)
     }
 
     /**
-     * Converts Visual coordinates (what we clicked) back to Model coordinates.
-     * For 180-degree rotation, the math is identical (X = 7 - X),
-     * but we separate it in case we add 90-degree rotation.
-     * @param visualCol visual column index
-     * @return model column index
+     * Draws scores of players.
+     * @param g2d Graphics2D to paint on
      */
-    private int toModelCol(int visualCol) {
-        if (viewPerspective == PieceColor.WHITE) {
-            return visualCol;
-        } else {
-            return 7 - visualCol;
+    private void drawScores(Graphics2D g2d) {
+        // Only relevant for Chaturaji
+        if (!(gameRules instanceof ChaturajiVariant)) return;
+
+        // Iterate all 4 colors
+        drawSingleScore(g2d, PieceColor.RED);
+        drawSingleScore(g2d, PieceColor.BLUE);
+        drawSingleScore(g2d, PieceColor.YELLOW);
+        drawSingleScore(g2d, PieceColor.GREEN);
+    }
+
+    /**
+     * Draw a certain player's points.
+     * @param g2d Graphics2D to draw on
+     * @param color color of the player
+     */
+    private void drawSingleScore(Graphics2D g2d, PieceColor color) {
+        int score = board.getScore(color);
+        String text = "Points: " + score;
+
+        // Check if player is dead
+        if (board.isPlayerDead(color)) {
+            text += " (Dead)";
         }
+
+        // Determine position based on current viewPerspective
+        // We want the score to "stick" to the player's edge
+
+        int x = 0, y = 0;
+        int padding = 10;
+
+        // Map specific colors to Visual Edges based on rotation.
+
+        // Find relative position (0=Bottom, 1=Left, 2=Top, 3=Right)
+        int relativePos = -1;
+        PieceColor p = viewPerspective;
+        for (int i = 0; i < 4; i++) {
+            if (p == color) {
+                relativePos = i;
+                break;
+            }
+            p = p.next(); // Rotates clockwise (Red->Blue->Yellow->Green)
+        }
+
+        // Set coordinates based on Visual Edge
+        g2d.setFont(new Font("Arial", Font.BOLD, 16));
+        FontMetrics fm = g2d.getFontMetrics();
+        int w = fm.stringWidth(text);
+        int h = fm.getHeight();
+
+        switch (relativePos) {
+            case 0: // BOTTOM (Self)
+                x = startX + (squareSize * 4) - (w / 2); // Center X
+                y = startY + (squareSize * 8) + h + padding; // Below board
+                break;
+            case 1: // LEFT
+                x = startX - w - padding; // Left of board
+                y = startY + (squareSize * 4) + (h / 4); // Center Y
+                break;
+            case 2: // TOP
+                x = startX + (squareSize * 4) - (w / 2); // Center X
+                y = startY - padding; // Above board
+                break;
+            case 3: // RIGHT
+                x = startX + (squareSize * 8) + padding; // Right of board
+                y = startY + (squareSize * 4) + (h / 4); // Center Y
+                break;
+        }
+
+        // Draw Background Bubble
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRoundRect(x - 5, y - h + 5, w + 10, h + 5, 10, 10);
+
+        // Draw Text (Color-coded)
+        g2d.setColor(getColorForPlayer(color));
+        g2d.drawString(text, x, y);
+    }
+
+    /**
+     * @param color color of player
+     * @return rgb color of player
+     */
+    private Color getColorForPlayer(PieceColor color) {
+        return switch (color) {
+            case RED -> new Color(255, 100, 100);
+            case BLUE -> new Color(100, 150, 255);
+            case YELLOW -> new Color(255, 255, 100);
+            case GREEN -> new Color(100, 255, 100);
+            default -> Color.WHITE;
+        };
     }
 
     /**
@@ -591,7 +773,7 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * Helper to handle turn-switching, rules and game over checks
+     * Helper to handle turn-switching, rules and game over checks.
      * @param move move that was made
      */
     private void finalizeTurn(Move move) {
@@ -599,19 +781,40 @@ public class BoardPanel extends JPanel {
         // Execute the Move on the Board
         board.executeMove(move);
 
+        if (gameRules instanceof ChaturajiVariant chaturajiRules) {
+            // Update Points & Handle Player Death
+            chaturajiRules.handlePostMoveLogic(board, move);
+
+            // Check Chaturaji End Conditions (3 Kings Dead)
+            if (board.getAlivePlayerCount() <= 1) { // 3 dead = 1 alive
+                System.out.println("---------------------------------------");
+                System.out.println("GAME OVER! All enemies defeated.");
+                printChaturajiStandings();
+                System.out.println("---------------------------------------");
+                isGameOver = true;
+            } else {
+                board.switchTurn();
+                viewPerspective = board.getCurrentPlayer();
+            }
+
+            clearSelections();
+            return;
+        }
+
         // Check Win Condition (King Capture)
         if (move.capturedPiece() != null && move.capturedPiece().getType() == PieceType.KING) {
             System.out.println("---------------------------------------");
             System.out.println("GAME OVER! " + move.piece().getColor() + " captured the King!");
             System.out.println("---------------------------------------");
             isGameOver = true;
-            repaint();
+            clearSelections();
             return;
         }
 
-        // Handle Rules (Duck / Classical)
+        // --- SWITCHING TURNS ---
         if (gameRules instanceof DuckChessVariant) {
-            if (move.type() == model.MoveType.DUCK) {
+            // Duck Chess
+            if (move.type() == MoveType.DUCK) {
                 board.setWaitingForDuck(false);
                 board.switchTurn();
                 viewPerspective = board.getCurrentPlayer();
@@ -619,13 +822,13 @@ public class BoardPanel extends JPanel {
                 board.setWaitingForDuck(true);
             }
         } else {
-            // Classical / Fog / Others
+            // Classical / Fog / Crazyhouse
             board.switchTurn();
             viewPerspective = board.getCurrentPlayer();
         }
 
         // Fog of War Logic
-        if (gameRules instanceof model.rules.FogOfWarVariant) {
+        if (gameRules instanceof FogOfWarVariant) {
             isBlindMode = true;
             repaint();
             SwingUtilities.invokeLater(() -> {
@@ -652,6 +855,13 @@ public class BoardPanel extends JPanel {
             }
         }
 
+        clearSelections();
+    }
+
+    /**
+     * Clears selected/dragged piece, and repaints.
+     */
+    private void clearSelections() {
         // Clear Selections
         selectedPiece = null;
         selectedLegalMoves = null;
@@ -662,12 +872,69 @@ public class BoardPanel extends JPanel {
     }
 
     /**
+     * Helper to print scores and winners in Chaturaji.
+     */
+    private void printChaturajiStandings() {
+        System.out.println("FINAL SCORES:");
+        PieceColor[] players = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
+
+        int maxScore = -1;
+        java.util.List<PieceColor> winners = new java.util.ArrayList<>();
+
+        StringBuilder sb = new StringBuilder("GAME OVER!\n\nFinal Scores:\n");
+
+        for (PieceColor player : players) {
+            int score = board.getScore(player);
+            System.out.println(player + ": " + score);
+
+            sb.append(player).append(": ").append(score).append("\n");
+
+            // Logic to track multiple winners
+            if (score > maxScore) {
+                maxScore = score;
+                winners.clear(); // New high score found, discard previous winners
+                winners.add(player);
+            } else if (score == maxScore) {
+                winners.add(player); // Tie found, add to list
+            }
+        }
+
+        // Construct the winner string
+        StringBuilder winnerMsg = new StringBuilder();
+        if (winners.size() == 1) {
+            winnerMsg.append("\nWINNER: ").append(winners.getFirst());
+        } else {
+            winnerMsg.append("\nWINNERS: ");
+            for (int i = 0; i < winners.size(); i++) {
+                winnerMsg.append(winners.get(i));
+                if (i < winners.size() - 1) {
+                    winnerMsg.append(", ");
+                }
+            }
+        }
+
+        System.out.println(winnerMsg);
+        sb.append(winnerMsg).append("!");
+
+        clearSelections();
+
+        // Show Popup
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(this, sb.toString(), "Game Over", JOptionPane.INFORMATION_MESSAGE);
+        });
+    }
+
+    /**
      * Helper: extract Promotion Dialog Logic
      * @param move promotion move that was made (moving the pawn to the opposite row)
      * @return transformed move that is now promotion move
      */
     private Move handlePromotion(Move move) {
-        if (move.type() == model.MoveType.PROMOTION) {
+        if (move.type() == MoveType.PROMOTION) {
+            if (gameRules instanceof ChaturajiVariant) {
+                return new Move(move, PieceType.BOAT);
+            }
+
             Frame parent = (Frame) SwingUtilities.getWindowAncestor(this);
             PromotionDialog dialog = new PromotionDialog(parent, move.piece().getColor());
             dialog.setVisible(true);
@@ -698,11 +965,11 @@ public class BoardPanel extends JPanel {
                     // Create a "Virtual" Piece for dragging (We use -1, -1 to indicate it's not on the board)
                     Piece virtualPiece;
                     switch (type) {
-                        case ROOK -> virtualPiece = new model.pieces.Rook(myColor, -1, -1);
-                        case KNIGHT -> virtualPiece = new model.pieces.Knight(myColor, -1, -1);
-                        case BISHOP -> virtualPiece = new model.pieces.Bishop(myColor, -1, -1);
-                        case QUEEN -> virtualPiece = new model.pieces.Queen(myColor, -1, -1);
-                        default -> virtualPiece = new model.pieces.Pawn(myColor, -1, -1);
+                        case ROOK -> virtualPiece = new Rook(myColor, -1, -1);
+                        case KNIGHT -> virtualPiece = new Knight(myColor, -1, -1);
+                        case BISHOP -> virtualPiece = new Bishop(myColor, -1, -1);
+                        case QUEEN -> virtualPiece = new Queen(myColor, -1, -1);
+                        default -> virtualPiece = new Pawn(myColor, -1, -1);
                     }
 
                     // Set Drag State
@@ -795,8 +1062,8 @@ public class BoardPanel extends JPanel {
                 // Visual offsets
                 dragX = e.getX();
                 dragY = e.getY();
-                int visualRow = toVisualRow(coords.y);
-                int visualCol = toVisualCol(coords.x);
+                int visualRow = getVisualRow(coords.y, coords.x);
+                int visualCol = getVisualCol(coords.y, coords.x);
                 int pieceX = startX + (visualCol * squareSize);
                 int pieceY = startY + (visualRow * squareSize);
                 dragOffsetX = e.getX() - pieceX;

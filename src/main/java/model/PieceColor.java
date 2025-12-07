@@ -12,13 +12,20 @@ public enum PieceColor {
     BLUE,
     YELLOW,
     GREEN,
+    GREY,
     SPECIAL;
 
     /**
      * @return the color of the next player to move (order: clockwise)
      */
     public PieceColor next() {
-        // Simple toggle for 2 players, later for 4 players (Chaturaji), we will expand this logic!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
-        return (this == WHITE) ? BLACK : WHITE;
+        return switch (this) {
+            case RED -> BLUE;
+            case BLUE -> YELLOW;
+            case YELLOW -> GREEN;
+            case GREEN -> RED;
+            case WHITE -> BLACK;
+            default -> WHITE;
+        };
     }
 }

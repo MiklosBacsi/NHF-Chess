@@ -4,6 +4,8 @@ import model.pieces.*;
 import java.util.Stack;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * This class represents the chess board and stores its properties.
@@ -24,6 +26,10 @@ public class Board {
 
     // Important for making moves and turns correctly in Duck Chess
     private boolean waitingForDuck = false;
+
+    // For Chaturaji
+    private final Map<PieceColor, Integer> scores = new HashMap<>();
+    private final Set<PieceColor> deadPlayers = new HashSet<>();
 
     /**
      * Constructor that sets up the board.
@@ -57,6 +63,25 @@ public class Board {
             for(int c=0; c<8; c++)
                 squares[r][c] = null;
 
+        // Clear Reserves
+        reserves.get(PieceColor.WHITE).clear();
+        reserves.get(PieceColor.BLACK).clear();
+
+        // --- For Chaturaji ---
+        scores.clear();
+        deadPlayers.clear();
+
+        // Initialize scores
+        scores.put(PieceColor.RED, 0);
+        scores.put(PieceColor.BLUE, 0);
+        scores.put(PieceColor.YELLOW, 0);
+        scores.put(PieceColor.GREEN, 0);
+    }
+
+    /**
+     * Adds standard pieces to the board.
+     */
+    public void addStandardPieces() {
         // Pawns
         for (int i = 0; i < 8; i++) {
             placePiece(new Pawn(PieceColor.BLACK, 1, i), 1, i);
@@ -66,10 +91,6 @@ public class Board {
         // Heavy Pieces
         placeHeavyPieces(PieceColor.BLACK, 0);
         placeHeavyPieces(PieceColor.WHITE, 7);
-
-        // Clear Reserves
-        reserves.get(PieceColor.WHITE).clear();
-        reserves.get(PieceColor.BLACK).clear();
     }
 
     /**
@@ -201,8 +222,79 @@ public class Board {
      * @param owner the player who captured pieces, and we want to get the content of his reserve
      * @return the reserve (of pieces) of the given player
      */
-        public Map<PieceType, Integer> getReserve(PieceColor owner) {
+    public Map<PieceType, Integer> getReserve(PieceColor owner) {
         return reserves.get(owner);
+    }
+
+    /**
+     * Chaturaji: Adds points to player's points.
+     * @param player player who gets points
+     * @param points how many points the player gets
+     */
+    public void addScore(PieceColor player, int points) {
+        if (!scores.containsKey(player)) return;
+        scores.put(player, scores.get(player) + points);
+    }
+
+    /**
+     * Chaturaji: get player's points.
+     * @param player whose points we want to know
+     * @return points of the player
+     */
+    public int getScore(PieceColor player) {
+        return scores.getOrDefault(player, 0);
+    }
+
+    /**
+     * Kills player (e.g. his king has been captured).
+     * @param color color of the player we want to "kill"
+     */
+    public void killPlayer(PieceColor color) {
+        deadPlayers.add(color);
+        // Convert all pieces to GREY
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = squares[r][c];
+                if (p != null && p.getColor() == color) {
+                    // Create a grey copy (simplest way is to modify the piece or replace it)
+                    // Since Piece is mutable in our design (row/col), but color is final...
+                    // We must replace it. Ideally we clone logic, but for now:
+                    squares[r][c] = convertToGrey(p);
+                }
+            }
+        }
+    }
+
+    /**
+     * Chaturaji: after the kings is captured, its piece die (convert to grey).
+     * @param piece piece that dies
+     * @return piece converted into dead piece
+     */
+    private Piece convertToGrey(Piece piece) {
+        return switch (piece.getType()) {
+            case PAWN -> new Pawn(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case KING -> new King(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case BOAT -> new Rook(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case KNIGHT -> new Knight(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case BISHOP -> new Bishop(PieceColor.GREY, piece.getRow(), piece.getCol());
+            default -> null;
+        };
+    }
+
+    /**
+     * @param color color of the player
+     * @return if player is dead
+     */
+    public boolean isPlayerDead(PieceColor color) {
+        return deadPlayers.contains(color);
+    }
+
+    /**
+     * @return how many players are alive
+     */
+    public int getAlivePlayerCount() {
+        int total = (scores.containsKey(PieceColor.RED)) ? 4 : 2; // Detect game mode size roughly
+        return total - deadPlayers.size();
     }
 
     /**
@@ -213,10 +305,26 @@ public class Board {
     }
 
     /**
-     * Switches turn (after each move)
+     * Sets current player to given one.
+     * @param currentPlayer player that will become the current player
+     */
+    public void  setCurrentPlayer(PieceColor currentPlayer) {
+        this.currentPlayer = currentPlayer;
+    }
+
+    /**
+     * Switches turn (after each move) to the next player alive.
      */
     public void switchTurn() {
-        currentPlayer = currentPlayer.next();
+        PieceColor next = currentPlayer.next();
+
+        // Loop until we find an alive player (or loop forever if everyone dead - handled by game over)
+        int safety = 0;
+        while (deadPlayers.contains(next) && safety < 5) {
+            next = next.next();
+            ++safety;
+        }
+        currentPlayer = next;
     }
 
     /**
@@ -289,14 +397,25 @@ public class Board {
         if (move.type() == MoveType.PROMOTION) {
             Piece promotedPiece;
 
-            // Check what the user chose (Default to Queen if null, for safety)
-            PieceType type = (move.promotionType() != null) ? move.promotionType() : PieceType.QUEEN;
+            PieceColor c = move.piece().getColor();
+            boolean isChaturaji = (c == PieceColor.RED || c == PieceColor.BLUE || c == PieceColor.YELLOW || c == PieceColor.GREEN);
 
-            switch (type) {
-                case ROOK -> promotedPiece = new Rook(move.piece().getColor(), move.endRow(), move.endCol());
-                case BISHOP -> promotedPiece = new Bishop(move.piece().getColor(), move.endRow(), move.endCol());
-                case KNIGHT -> promotedPiece = new Knight(move.piece().getColor(), move.endRow(), move.endCol());
-                default -> promotedPiece = new Queen(move.piece().getColor(), move.endRow(), move.endCol());
+            if (isChaturaji) {
+                // Always promote to BOAT
+                promotedPiece = new Boat(move.piece().getColor(), move.endRow(), move.endCol());
+            } else {
+                // --- STANDARD PROMOTION WITH DIALOG ---
+                // Check what the user chose (Default to Queen if null, for safety)
+                PieceType type = (move.promotionType() != null) ? move.promotionType() : PieceType.QUEEN;
+
+                // Create promoted piece
+                switch (type) {
+                    case BOAT -> promotedPiece = new Boat(move.piece().getColor(), move.endRow(), move.endCol());
+                    case ROOK -> promotedPiece = new Rook(move.piece().getColor(), move.endRow(), move.endCol());
+                    case BISHOP -> promotedPiece = new Bishop(move.piece().getColor(), move.endRow(), move.endCol());
+                    case KNIGHT -> promotedPiece = new Knight(move.piece().getColor(), move.endRow(), move.endCol());
+                    default -> promotedPiece = new Queen(move.piece().getColor(), move.endRow(), move.endCol());
+                }
             }
 
             squares[move.endRow()][move.endCol()] = promotedPiece;

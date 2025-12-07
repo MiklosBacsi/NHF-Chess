@@ -28,33 +28,75 @@ public class Pawn extends Piece {
     public List<Move> getPseudoLegalMoves(Board board) {
         List<Move> moves = new ArrayList<>();
 
-        // White moves UP (-1), Black moves DOWN (+1)
-        int direction = (color == PieceColor.WHITE) ? -1 : 1;
+        int dRow = 0;
+        int dCol = 0;
 
-        // Single Step Forward
-        int forwardRow = row + direction;
-        if (isValidSquare(forwardRow, col) && board.getPiece(forwardRow, col) == null) {
-            moves.add(new Move(this, row, col, forwardRow, col));
-
-            // Double Step (Only, if it hasn't moved and path is clear)
-            int doubleRow = row + (direction * 2);
-            if (!hasMoved && isValidSquare(doubleRow, col) && board.getPiece(doubleRow, col) == null) {
-                moves.add(new Move(this, row, col, doubleRow, col));
-            }
+        // Define Forward Vector based on Color
+        switch (color) {
+            case WHITE, RED:    dRow = -1; break; // Up
+            case BLACK, YELLOW: dRow = 1;  break; // Down
+            case BLUE:          dCol = 1;  break; // Right (Blue starts Left)
+            case GREEN:         dCol = -1; break; // Left  (Green starts Right)
+            default: return moves;
         }
 
-        // Captures (Diagonals)
-        int[] captureCols = {col - 1, col + 1};
-        for (int captureCol : captureCols) {
-            if (isValidSquare(forwardRow, captureCol)) {
-                Piece target = board.getPiece(forwardRow, captureCol);
+        int nextRow = row + dRow;
+        int nextCol = col + dCol;
 
-                if (target != null && target.getColor() != this.color) {
-                    moves.add(new Move(this, row, col, forwardRow, captureCol, target));
+        // Single Step
+        if (isValidSquare(nextRow, nextCol) && board.getPiece(nextRow, nextCol) == null) {
+            boolean promotes = isChaturajiPromotion(nextRow, nextCol);
+            MoveType type = promotes ? MoveType.PROMOTION : MoveType.NORMAL;
+            moves.add(new Move(this, row, col, nextRow, nextCol, type, null));
+
+            // Double Step (ONLY for Classical Colors)
+            if (color == PieceColor.WHITE || color == PieceColor.BLACK) {
+                int doubleRow = row + (dRow * 2);
+                // Standard double step logic
+                if (!hasMoved && isValidSquare(doubleRow, col) && board.getPiece(doubleRow, col) == null) {
+                    moves.add(new Move(this, row, col, doubleRow, col));
                 }
             }
         }
 
+        // --- Captures ---
+        // Calculate the two "forward diagonal" squares relative to the movement vector
+        int[][] captureTargets = new int[2][2];
+        if (dRow != 0) { // Vertical Movement
+            captureTargets[0] = new int[]{row + dRow, col - 1};
+            captureTargets[1] = new int[]{row + dRow, col + 1};
+        } else { // Horizontal Movement
+            captureTargets[0] = new int[]{row - 1, col + dCol};
+            captureTargets[1] = new int[]{row + 1, col + dCol};
+        }
+
+        for (int[] target : captureTargets) {
+            int r = target[0];
+            int c = target[1];
+            if (isValidSquare(r, c)) {
+                Piece p = board.getPiece(r, c);
+                if (p != null && p.getColor() != this.color && p.getColor() != PieceColor.SPECIAL) {
+                    boolean promotes = isChaturajiPromotion(r, c);
+                    MoveType type = promotes ? MoveType.PROMOTION : MoveType.NORMAL;
+                    moves.add(new Move(this, row, col, r, c, type, p));
+                }
+            }
+        }
         return moves;
+    }
+
+    /**
+     * @param row row index
+     * @param col column index
+     * @return whether the square is a promotion square
+     */
+    private boolean isChaturajiPromotion(int row, int col) {
+        return switch (color) {
+            case RED -> row == 0;
+            case YELLOW -> row == 7;
+            case BLUE -> col == 7;
+            case GREEN -> col == 0;
+            default -> false;
+        };
     }
 }
