@@ -230,7 +230,7 @@ public class ClassicalVariant implements GameVariant {
      * @param color color of the player to check
      * @return whether a player with the given color has no legal moves
      */
-    private boolean hasNoLegalMoves(Board board, PieceColor color) {
+    protected boolean hasNoLegalMoves(Board board, PieceColor color) {
         // Iterate all pieces of this color, see if ANY can move
         for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
