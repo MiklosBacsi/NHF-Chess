@@ -96,24 +96,62 @@ public class ChaturajiVariant implements GameVariant {
     }
 
     /**
-     * Counts how many kings the attacker checks.
+     * Counts how many kings the attacker checks simultaneously.
      * @param board board to check on
      * @param attackerColor color of the attacker
      * @return number of kings checked by the attacker
      */
     private int countChecks(Board board, PieceColor attackerColor) {
         int count = 0;
-        PieceColor[] enemies = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
-        for (PieceColor enemy : enemies) {
-            if (enemy != attackerColor && !board.isPlayerDead(enemy)) {
-                if (isCheck(board, enemy)) count++;
+        PieceColor[] allColors = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
+
+        for (PieceColor enemyColor : allColors) {
+            // Don't check myself
+            if (enemyColor == attackerColor) continue;
+
+            // Ignore dead players (Grey kings don't count for check bonuses)
+            if (board.isPlayerDead(enemyColor)) continue;
+
+            Piece enemyKing = board.findKing(enemyColor);
+
+            // Check if THIS enemy king is attacked by ME (attackerColor)
+            if (isAttackedByPlayer(board, enemyKing, attackerColor)) {
+                count++;
             }
         }
         return count;
     }
 
     /**
-     * We need to implement it here instead of inheriting from Classical because we would need to overwrite isSquareAttacked.
+     * Helper: Checks if a specific King is under attack by a SPECIFIC player
+     * @param board board to check on
+     * @param king king that is checked for checks
+     * @param attackerColor attacker (player)
+     * @return
+     */
+    private boolean isAttackedByPlayer(Board board, Piece king, PieceColor attackerColor) {
+        if (king == null) return false;
+
+        // Iterate over the whole board to find pieces belonging to 'attackerColor'
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece p = board.getPiece(r, c);
+
+                // Only look at the attacker's pieces
+                if (p != null && p.getColor() == attackerColor) {
+                    // Check if this piece can hit the king
+                    for (Move m : p.getPseudoLegalMoves(board)) {
+                        if (m.endRow() == king.getRow() && m.endCol() == king.getCol()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param board board to check on
      * @param color color of the player
      * @return whether the player is in check
@@ -121,19 +159,25 @@ public class ChaturajiVariant implements GameVariant {
     @Override
     public boolean isCheck(Board board, PieceColor color) {
         Piece king = board.findKing(color);
+        // If the King is captured (dead), he cannot be in check
         if (king == null) return false;
 
-        // Check all enemies
-        for (int r=0; r<8; r++) {
-            for (int c=0; c<8; c++) {
-                Piece p = board.getPiece(r, c);
-                if (p != null && p.getColor() != color && p.getColor() != PieceColor.SPECIAL) {
-                    for(Move m : p.getPseudoLegalMoves(board)) {
-                        if (m.endRow() == king.getRow() && m.endCol() == king.getCol()) return true;
-                    }
-                }
+        // Check if ANY of the 3 other players are attacking this King
+        PieceColor[] allColors = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
+
+        for (PieceColor enemy : allColors) {
+            // Skip self
+            if (enemy == color) continue;
+
+            // Skip dead players (Grey pieces do not give checks)
+            if (board.isPlayerDead(enemy)) continue;
+
+            // Reuse the helper method
+            if (isAttackedByPlayer(board, king, enemy)) {
+                return true; // Glow Red!
             }
         }
+
         return false;
     }
 

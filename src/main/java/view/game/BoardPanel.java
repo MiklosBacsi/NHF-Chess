@@ -308,6 +308,8 @@ public class BoardPanel extends JPanel {
 
         if (gameRules instanceof DuckChessVariant) {
             movesToShow = 2; // Piece Move + Duck Move
+        } else if (gameRules instanceof  ChaturajiVariant) {
+            movesToShow = Math.max(board.getAlivePlayerCount() - 1, 1);
         }
 
         List<Move> recentMoves = board.getLastMoves(movesToShow);
@@ -742,10 +744,10 @@ public class BoardPanel extends JPanel {
      */
     private Color getColorForPlayer(PieceColor color) {
         return switch (color) {
-            case RED -> new Color(255, 100, 100);
-            case BLUE -> new Color(100, 150, 255);
-            case YELLOW -> new Color(255, 255, 100);
-            case GREEN -> new Color(100, 255, 100);
+            case RED -> new Color(191, 59, 67);
+            case BLUE -> new Color(65, 133, 191);
+            case YELLOW -> new Color(192, 149, 38);
+            case GREEN -> new Color(78, 145, 97);
             default -> Color.WHITE;
         };
     }
