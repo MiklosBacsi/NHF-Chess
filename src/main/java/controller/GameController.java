@@ -146,15 +146,17 @@ public class GameController {
      */
     public String getDuckChessRules() {
         return "<h2>Duck Chess</h2><p>After each move, a neutral duck is placed on an empty square, which blocks that square. " +
-            "The duck cannot be captured or moved through, and it has to be placed on a different square, than it previously has been.</p>";
+            "The duck cannot be captured or moved through, and it has to be placed on a different square, than it previously has been.</p>" +
+            "<p>There is no check or checkmate, you can win by capturing your enemy's king. The stalemated players wins!</p>";
     }
 
     /**
      * @return guide for playing the Crazyhouse variant (HTML format)
      */
     public String getCrazyhouseRules() {
-        return "<h2>Crazyhouse</h2><p>When capturing a piece of the enemy, it moves into our container. " +
-            "Instead of making a move, you can choose to take a piece out of the container, and drop it back onto the board, in an empty square, but now as your piece.</p>";
+        return "<h2>Crazyhouse</h2><p>When capturing a piece of the enemy, it moves into our reserve. " +
+            "Instead of making a move, you can choose to take a piece out of the reserve, " +
+            "and drop it back onto the board, in an empty square, but now as your piece.</p>";
     }
 
     /**

@@ -92,13 +92,60 @@ public class DuckChessVariant extends ClassicalVariant {
     }
 
     /**
+     * In Duck Chess, the stalemated player wins.
      * @param board board to check on
      * @param color color of the king to check
      * @return whether there is a stalemate
      */
     @Override
     public boolean isStalemate(Board board, PieceColor color) {
-        // In super rare cases, it still exists
-        return super.isStalemate(board, color);
+        return !hasAnySafeMove(board, color);
+    }
+
+    /**
+     * Helper for isStalemate, because we disabled checks.
+     * @param board board to check on
+     * @param color color of player
+     * @return if player has any safe moves
+     */
+    private boolean hasAnySafeMove(Board board, PieceColor color) {
+        // Iterate over all pieces of the current player
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece piece = board.getPiece(r, c);
+                if (piece != null && piece.getColor() == color && piece.getType() != PieceType.DUCK) {
+
+                    // Get potential moves (includes unsafe ones)
+                    // We use getLegalMoves() so we respect Duck constraints and En Passant
+                    List<Move> candidates = getLegalMoves(board, piece);
+
+                    for (Move move : candidates) {
+                        // Simulate Move
+                        board.executeMove(move);
+
+                        // Check Safety manually (We cannot use isCheck() because we overrode it to return false)
+                        Piece king = board.findKing(color);
+                        boolean isSafe = true;
+
+                        // If King is on board (not captured by simulation logic), check attacks
+                        if (king != null) {
+                            // We use the protected helper from ClassicalVariant
+                            if (isSquareAttacked(board, king.getRow(), king.getCol(), color)) {
+                                isSafe = false;
+                            }
+                        }
+
+                        // Undo Move
+                        board.undoMove();
+
+                        // If we found at least one safe move, it's NOT stalemate
+                        if (isSafe) return true;
+                    }
+                }
+            }
+        }
+
+        // No safe moves found -> Stalemate
+        return false;
     }
 }
