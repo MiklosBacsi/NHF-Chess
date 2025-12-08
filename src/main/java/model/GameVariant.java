@@ -14,4 +14,5 @@ public interface GameVariant {
     boolean isCheck(Board board, PieceColor color);
     boolean isCheckmate(Board board, PieceColor color);
     boolean isStalemate(Board board, PieceColor color);
+    boolean isDrawBy50MoveRule(Board board);
 }

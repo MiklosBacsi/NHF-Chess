@@ -513,4 +513,30 @@ public class Board {
         }
         return null;
     }
+
+    /**
+     * For the 50-Move Rule: Counts half-moves since the last Pawn move or Capture.
+     * 50 moves = 100 half-moves.
+     */
+    public int getHalfMoveClock() {
+        int count = 0;
+        // Iterate backwards through history
+        for (int i = moveHistory.size() - 1; i >= 0; i--) {
+            Move move = moveHistory.get(i);
+
+            // Reset counter if Pawn moved or Piece captured
+            if (move.piece().getType() == PieceType.PAWN || move.capturedPiece() != null) {
+                break;
+            }
+
+            // Reset if it was a Drop move (Crazyhouse specific rule varies,
+            // but usually drops reset the clock because they change material on board)
+            if (move.type() == MoveType.DROP) {
+                break;
+            }
+
+            ++count;
+        }
+        return count;
+    }
 }

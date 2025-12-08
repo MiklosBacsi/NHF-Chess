@@ -226,6 +226,17 @@ public class ClassicalVariant implements GameVariant {
     }
 
     /**
+     * Returns if the 50-Move Rule has activated.
+     * @param board board to check on
+     * @return if draw due to the 50-Move Rule
+     */
+    @Override
+    public boolean isDrawBy50MoveRule(Board board) {
+        // 50 full moves = 100 half moves
+        return board.getHalfMoveClock() >= 100;
+    }
+
+    /**
      * @param board board to check on
      * @param color color of the player to check
      * @return whether a player with the given color has no legal moves

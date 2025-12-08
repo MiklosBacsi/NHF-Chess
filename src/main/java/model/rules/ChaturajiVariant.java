@@ -198,4 +198,14 @@ public class ChaturajiVariant implements GameVariant {
      */
     @Override
     public boolean isStalemate(Board board, PieceColor color) { return false; }
+
+    /**
+     * 50-Move Rule: Let's disable it, because Chaturaji is player for points.
+     * @param board board to check on
+     * @return false
+     */
+    @Override
+    public boolean isDrawBy50MoveRule(Board board) {
+        return false;
+    }
 }

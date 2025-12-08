@@ -924,6 +924,10 @@ public class BoardPanel extends JPanel {
                 }
                 showGameOverDialog(message);
             }
+            // 50-Move Rule
+            else if (gameRules.isDrawBy50MoveRule(board)) {
+                showGameOverDialog("DRAW!\n50-move rule (no pawn moves or captures).");
+            }
         }
 
         clearSelections();
