@@ -1,5 +1,7 @@
 package view.game;
 
+import model.TimeSettings;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -24,7 +26,7 @@ public class GamePanel extends JPanel {
         JPanel topPanel = new JPanel(new BorderLayout());
         topPanel.setOpaque(false);
         // Add padding so the button isn't glued to the screen edge
-        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
         // Define a fixed size for the navigation elements
         Dimension navSize = new Dimension(160, 40);
@@ -40,7 +42,7 @@ public class GamePanel extends JPanel {
         gameModeLabel = new JLabel("Classical Chess", SwingConstants.CENTER);
         gameModeLabel.setFont(new Font("Arial", Font.BOLD, 24));
         gameModeLabel.setForeground(Color.LIGHT_GRAY);
-        gameModeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        gameModeLabel.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         topPanel.add(gameModeLabel, BorderLayout.CENTER);
 
         // An invisible placeholder, which forces the BorderLayout.CENTER to be perfectly in the middle of the window.
@@ -74,11 +76,18 @@ public class GamePanel extends JPanel {
      * Starts a new game with the chosen variant
      * @param modeName name of the chosen variant
      */
-    public void startNewGame(String modeName) {
+    public void startNewGame(String modeName, TimeSettings  timeSettings) {
         // Update Title text
         setGameModeText("Current Mode: " + modeName);
 
-        // 2. Reset Board and Rules
-        boardPanel.setupGame(modeName);
+        // Reset Board and Rules
+        boardPanel.setupGame(modeName, timeSettings);
+    }
+
+    /**
+     * Stops chess clock.
+     */
+    public void stopGame() {
+        boardPanel.stopGame();
     }
 }

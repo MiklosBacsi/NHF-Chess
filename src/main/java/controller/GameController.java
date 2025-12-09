@@ -37,15 +37,17 @@ public class GameController {
     }
 
     /**
-     * Starts a new game with the chosen game variant
+     * Starts a new game with the chosen game variant (and chess clock).
      * @param mode chosen game variant
      */
     public void startNewGame(String mode) {
         // Reset the logic and view state
-        view.startNewGame(mode);
+        boolean gameStarted = view.startNewGame(mode);
 
-        // Show the screen
-        showScene(GAME);
+        // Show the screen if game actually started
+        if (gameStarted) {
+            showScene(GAME);
+        }
     }
 
     /**
@@ -53,6 +55,10 @@ public class GameController {
      * @param scene scene to be shown
      */
     public void showScene(String scene) {
+        if (!scene.equals(GAME)) {
+            view.stopGame(); // Stop Chess Clock
+        }
+
         view.showCard(scene);
     }
 

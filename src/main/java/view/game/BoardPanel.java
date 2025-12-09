@@ -30,6 +30,9 @@ public class BoardPanel extends JPanel {
     private final Board board;
     private final Map<String, BufferedImage> pieceImages = new HashMap<>();
     private boolean isGameOver = false;
+    // Clock State
+    private ChessClock chessClock;
+    private final Timer gameLoopTimer; // Swing Timer for repainting
 
     // --- Drag & Drop State ---
     private Piece draggedPiece = null;
@@ -78,20 +81,23 @@ public class BoardPanel extends JPanel {
         MouseAdapter mouseHandler = new DragController();
         addMouseListener(mouseHandler);
         addMouseMotionListener(mouseHandler);
+
+        // Create a timer that ticks every 100ms to update clocks
+        gameLoopTimer = new Timer(100, e -> updateGameLoop());
     }
 
     /**
      * It creates a new game with the chosen variant.
      * @param mode determines the type of the game variant
      */
-    public void setupGame(String mode) {
+    public void setupGame(String mode, TimeSettings timeSettings) {
         // Reset Model
         board.resetBoard();
 
         this.viewPerspective = PieceColor.WHITE;
 
         // Reset padding
-        this.boardPadding = 20;
+        this.boardPadding = 40;
 
         // Select Rules & Special Setup
         switch (mode) {
@@ -115,7 +121,7 @@ public class BoardPanel extends JPanel {
                 this.gameRules = new CrazyhouseVariant();
                 board.addStandardPieces();
                 board.setCrazyhouseMode(true); // ENABLE RESERVES
-                this.boardPadding = 90;
+                this.boardPadding = 120;
                 break;
 
             case "Chaturaji":
@@ -123,7 +129,7 @@ public class BoardPanel extends JPanel {
                 setupChaturajiBoard();
                 this.viewPerspective = PieceColor.RED;
                 board.setCurrentPlayer(PieceColor.RED);
-                this.boardPadding = 50;
+                this.boardPadding = 65;
                 break;
 
             default:
@@ -135,6 +141,16 @@ public class BoardPanel extends JPanel {
         // Calculate initial visibility for White
         if (gameRules instanceof FogOfWarVariant) {
             calculateVisibility();
+        }
+
+        // Setup Clock
+        if (timeSettings != null) {
+            this.chessClock = new ChessClock(timeSettings);
+
+            // Start clock for the first player (White or Red)
+            PieceColor startColor = (gameRules instanceof ChaturajiVariant) ? PieceColor.RED : PieceColor.WHITE;
+            chessClock.start(startColor);
+            gameLoopTimer.start();
         }
 
         isGameOver = false;
@@ -534,6 +550,9 @@ public class BoardPanel extends JPanel {
 
         // --- DRAW SCORES (Chaturaji) ---
         drawScores(g2d);
+
+        // --- DRAW CLOCK ---
+        drawClocks(g2d);
     }
 
     /**
@@ -831,14 +850,174 @@ public class BoardPanel extends JPanel {
 
         int y;
         if (isTop) {
-            y = startY - RESERVE_SLOT_SIZE - 20;
+            y = startY - RESERVE_SLOT_SIZE - 15;
         } else {
-            y = startY + (squareSize * 8) + 20;
+            y = startY + (squareSize * 8) + 15;
         }
 
         int x = startX + (slotIndex * (RESERVE_SLOT_SIZE + RESERVE_GAP));
 
         return new Rectangle(x, y, RESERVE_SLOT_SIZE, RESERVE_SLOT_SIZE);
+    }
+
+    /**
+     * Updates the Chess Clock.
+     */
+    private void updateGameLoop() {
+        if (isGameOver || chessClock == null) return;
+
+        // Update Time
+        chessClock.tick();
+
+        // Check Timeout
+        PieceColor activePlayer = board.getCurrentPlayer();
+        if (chessClock.isFlagFallen(activePlayer)) {
+            handleTimeout(activePlayer);
+        }
+
+        // Redraw (to show updated digits)
+        repaint();
+    }
+
+    /**
+     * Handles what happens when a player's time runs out.
+     * @param loser color of the loser player
+     */
+    private void handleTimeout(PieceColor loser) {
+        if (gameRules instanceof ChaturajiVariant) {
+            System.out.println("TIMEOUT! " + loser + " dies.");
+            board.killPlayer(loser);
+
+            // If 3 kings dead -> Game Over
+            if (board.getAlivePlayerCount() <= 1) {
+                showGameOverDialog("GAME OVER!\nTime ran out.");
+            } else {
+                // Switch to next alive player
+                board.switchTurn();
+                viewPerspective = board.getCurrentPlayer();
+                chessClock.start(board.getCurrentPlayer()); // Start next clock
+            }
+        } else {
+            // Standard / Duck / Fog -> Immediate Loss
+            PieceColor winner = loser.next(); // Simplified (In 2 player)
+            showGameOverDialog("TIMEOUT!\n" + loser + " ran out of time.\n" + winner + " wins!");
+        }
+    }
+
+    /**
+     * Helper for drawing all chess clocks.
+     * @param g2d Graphics2D to draw on
+     */
+    private void drawClocks(Graphics2D g2d) {
+        if (chessClock == null) return;
+
+        // Determine players to show
+        PieceColor[] players;
+        if (gameRules instanceof ChaturajiVariant) {
+            players = new PieceColor[]{PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
+        } else {
+            players = new PieceColor[]{PieceColor.WHITE, PieceColor.BLACK};
+        }
+
+        for (PieceColor player : players) {
+            if (board.isPlayerDead(player)) continue; // Don't show clock for dead players
+
+            long millis = chessClock.getTime(player);
+            drawSingleClock(g2d, player, formatTime(millis));
+        }
+    }
+
+    /**
+     * @param millis remaining time in milliseconds
+     * @return Formated remaining time
+     */
+    private String formatTime(long millis) {
+        if (millis < 0) millis = 0;
+        long sec = millis / 1000;
+        long min = sec / 60;
+        sec = sec % 60;
+        return String.format("%02d:%02d", min, sec);
+    }
+
+    /**
+     * Helper to draw a single chess clock.
+     * @param g2d Graphics2D to draw on
+     * @param color color of the player
+     * @param timeText text on the clock that we draw
+     */
+    private void drawSingleClock(Graphics2D g2d, PieceColor color, String timeText) {
+        // Calculate Relative Position (0=Bottom, 1=Left, 2=Top, 3=Right)
+        int relativePos = -1;
+
+        if (gameRules instanceof ChaturajiVariant) {
+            PieceColor p = viewPerspective;
+            for (int i = 0; i < 4; i++) {
+                if (p == color) {
+                    relativePos = i;
+                    break;
+                }
+                p = p.next();
+            }
+        } else {
+            // Standard Chess (2 Player)
+            if (color == viewPerspective) relativePos = 0; // Self (Bottom)
+            else relativePos = 2; // Opponent (Top)
+        }
+
+        // Setup Font & Colors
+        g2d.setFont(new Font("Monospaced", Font.BOLD, 20));
+        FontMetrics fm = g2d.getFontMetrics();
+        int w = fm.stringWidth(timeText);
+        int h = fm.getHeight();
+        int padding = 10;
+
+        // Active Player Highlight
+        if (color == board.getCurrentPlayer()) {
+            g2d.setColor(new Color(255, 255, 255)); // Bright White for active
+        } else {
+            g2d.setColor(Color.LIGHT_GRAY);       // Gray for waiting
+        }
+
+        // Calculate Coordinates
+        // We push the clock OUTWARDS (further from board than scores)
+        int x = 0, y = 0;
+        int scoreOffset = (gameRules instanceof ChaturajiVariant) ? 25 : 0;
+        int reserveOffset = (gameRules instanceof CrazyhouseVariant) ? 80 : 0;
+
+        switch (relativePos) {
+            case 0: // BOTTOM
+                x = startX + (squareSize * 4) - (w / 2);
+                y = startY + (squareSize * 8) + h + scoreOffset + reserveOffset;
+                break;
+            case 1: // LEFT
+                x = startX - w - padding;
+                y = startY + (squareSize * 4) + (h / 3) + scoreOffset;
+                break;
+            case 2: // TOP
+                x = startX + (squareSize * 4) - (w / 2);
+                y = startY - padding - scoreOffset - reserveOffset;
+                break;
+            case 3: // RIGHT
+                x = startX + (squareSize * 8) + padding;
+                y = startY + (squareSize * 4) + (h / 3) + scoreOffset;
+                break;
+        }
+
+        // Draw Background Bubble
+        g2d.fillRoundRect(x - 5, y - h + 5, w + 10, h, 10, 10);
+
+        // Draw Text (Black text on colored background)
+        g2d.setColor(Color.BLACK);
+        g2d.drawString(timeText, x, y);
+    }
+
+    /**
+     * Stops the Chess Clock.
+     */
+    public void stopGame() {
+        chessClock = null;
+
+        if (gameLoopTimer.isRunning()) gameLoopTimer.stop();
     }
 
     /**
@@ -860,6 +1039,10 @@ public class BoardPanel extends JPanel {
                 printChaturajiStandings();
             } else {
                 board.switchTurn();
+
+                // Switch turn for Chess Clock
+                if (chessClock != null) chessClock.switchTurn(board.getCurrentPlayer());
+
                 viewPerspective = board.getCurrentPlayer();
             }
 
@@ -880,6 +1063,10 @@ public class BoardPanel extends JPanel {
             if (move.type() == MoveType.DUCK) {
                 board.setWaitingForDuck(false);
                 board.switchTurn();
+
+                // Switch turn for Chess Clock
+                if (chessClock != null) chessClock.switchTurn(board.getCurrentPlayer());
+
                 viewPerspective = board.getCurrentPlayer();
             } else {
                 board.setWaitingForDuck(true);
@@ -887,17 +1074,28 @@ public class BoardPanel extends JPanel {
         } else {
             // Classical / Fog / Crazyhouse
             board.switchTurn();
+
+            // Switch turn for Chess Clock
+            if (chessClock != null) chessClock.switchTurn(board.getCurrentPlayer());
+
             viewPerspective = board.getCurrentPlayer();
         }
 
         // Fog of War Logic
         if (gameRules instanceof FogOfWarVariant) {
+            // PAUSE CLOCK
+            if (chessClock != null) chessClock.stop();
+
             isBlindMode = true;
             repaint();
             SwingUtilities.invokeLater(() -> {
                 Frame parent = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
                 new PassTurnDialog(parent, board.getCurrentPlayer()).setVisible(true);
                 isBlindMode = false;
+
+                // RESUME CLOCK
+                if (chessClock != null) chessClock.start(board.getCurrentPlayer());
+
                 calculateVisibility();
                 repaint();
             });

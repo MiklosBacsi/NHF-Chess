@@ -127,7 +127,7 @@ public class ChaturajiVariant implements GameVariant {
      * @param board board to check on
      * @param king king that is checked for checks
      * @param attackerColor attacker (player)
-     * @return
+     * @return if the given king is attacked the given player
      */
     private boolean isAttackedByPlayer(Board board, Piece king, PieceColor attackerColor) {
         if (king == null) return false;

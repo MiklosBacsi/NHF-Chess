@@ -1,8 +1,10 @@
 package view;
 
 import controller.GameController;
+import model.TimeSettings;
 import view.game.BoardTheme;
 import view.game.GamePanel;
+import view.game.GameSetupDialog;
 import view.history.HistoryPanel;
 import view.menu.MainMenuPanel;
 
@@ -57,11 +59,32 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Starts a new game.
+     * Starts a new game with given variant and chosen chess clock.
      * @param mode name of the chosen chess variant
+     * @return if the game has successfully been created
      */
-    public void startNewGame(String mode) {
-        gamePanel.startNewGame(mode);
+    public boolean startNewGame(String mode) {
+        // Show Setup Dialog
+        GameSetupDialog dialog = new GameSetupDialog(this);
+        dialog.setVisible(true);
+
+        TimeSettings settings = dialog.getSelectedSettings();
+
+        if (settings != null) {
+            // Start Game with settings
+            gamePanel.startNewGame(mode, settings);
+            return true; // Success: user clicked start
+        }
+        return false; // Failure: user closed dialog
+    }
+
+    /**
+     * Stops the chess clock.
+     */
+    public void stopGame() {
+        if (gamePanel != null) {
+            gamePanel.stopGame();
+        }
     }
 
     /**
