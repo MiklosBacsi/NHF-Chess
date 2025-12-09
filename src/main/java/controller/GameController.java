@@ -59,6 +59,11 @@ public class GameController {
             view.stopGame(); // Stop Chess Clock
         }
 
+        // Refresh history when switching to that screen
+        if (scene.equals(HISTORY)) {
+            view.getHistoryPanel().refresh();
+        }
+
         view.showCard(scene);
     }
 

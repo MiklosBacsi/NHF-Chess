@@ -59,6 +59,11 @@ public class BoardPanel extends JPanel {
     private final PieceType[] RESERVE_ORDER = {
             PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN
     };
+    // For Game History
+    private String currentModeName = "Classical";
+    private boolean isReplayMode = false;
+    private List<SavedMove> replayMoves;
+    private int currentReplayIndex = 0;
 
     // Cached calculation values to share between paint() and mouse listeners
     private int startX, startY, squareSize;
@@ -82,6 +87,18 @@ public class BoardPanel extends JPanel {
         addMouseListener(mouseHandler);
         addMouseMotionListener(mouseHandler);
 
+        // Key Listener for Replay
+        addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_RIGHT) {
+                    replayStep(1);
+                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_LEFT) {
+                    replayStep(-1);
+                }
+            }
+        });
+
         // Create a timer that ticks every 100ms to update clocks
         gameLoopTimer = new Timer(100, e -> updateGameLoop());
     }
@@ -91,6 +108,9 @@ public class BoardPanel extends JPanel {
      * @param mode determines the type of the game variant
      */
     public void setupGame(String mode, TimeSettings timeSettings) {
+        this.currentModeName = mode;
+        this.isReplayMode = false;
+
         // Reset Model
         board.resetBoard();
 
@@ -560,7 +580,7 @@ public class BoardPanel extends JPanel {
      */
     private void calculateVisibility() {
         visibleSquares.clear();
-        PieceColor myColor = board.getCurrentPlayer();
+        PieceColor myColor = this.viewPerspective;
 
         for (int r = 0; r < 8; r++) {
             for (int c = 0; c < 8; c++) {
@@ -818,6 +838,14 @@ public class BoardPanel extends JPanel {
         // Clear visual artifacts (dots, highlights)
         clearSelections();
 
+        if (!isReplayMode) {
+            // Get moves chronologically
+            List<Move> allMoves = new ArrayList<>(board.getMoveHistory());
+
+            // Save Game
+            GameSaver.saveGame(currentModeName, message.replace("\n", " "), allMoves);
+        }
+
         // Show the Popup
         SwingUtilities.invokeLater(() -> {
             JOptionPane.showMessageDialog(this, message, "Game Over", JOptionPane.INFORMATION_MESSAGE);
@@ -1022,72 +1050,58 @@ public class BoardPanel extends JPanel {
 
     /**
      * Helper to handle turn-switching, rules and game over checks.
+     * It calls executeMoveLogic to execute purely the move first.
      * @param move move that was made
      */
     private void finalizeTurn(Move move) {
 
-        // Execute the Move on the Board
-        board.executeMove(move);
+        // Run Logic
+        executeMoveLogic(move);
 
-        if (gameRules instanceof ChaturajiVariant chaturajiRules) {
-            // Update Points & Handle Player Death
-            chaturajiRules.handlePostMoveLogic(board, move);
+        // --- UI: Check Game Over Conditions (Popups) ---
 
-            // Check Chaturaji End Conditions (3 Kings Dead)
-            if (board.getAlivePlayerCount() <= 1) { // 3 dead = 1 alive
+        // Chaturaji Game Over
+        if (gameRules instanceof ChaturajiVariant) {
+            if (board.getAlivePlayerCount() <= 1) {
                 isGameOver = true;
                 printChaturajiStandings();
-            } else {
-                board.switchTurn();
-
-                // Switch turn for Chess Clock
-                if (chessClock != null) chessClock.switchTurn(board.getCurrentPlayer());
-
-                viewPerspective = board.getCurrentPlayer();
             }
-
-            clearSelections();
-            return;
         }
-
-        // Check Win Condition (King Capture)
-        if (move.capturedPiece() != null && move.capturedPiece().getType() == PieceType.KING) {
+        // King Capture (Duck/Fog)
+        else if (move.capturedPiece() != null && move.capturedPiece().getType() == PieceType.KING) {
             String winner = move.piece().getColor().toString();
             showGameOverDialog("GAME OVER!\n" + winner + " captured the King and WINS!");
-            return;
         }
-
-        // --- SWITCHING TURNS ---
-        if (gameRules instanceof DuckChessVariant) {
-            // Duck Chess
-            if (move.type() == MoveType.DUCK) {
-                board.setWaitingForDuck(false);
-                board.switchTurn();
-
-                // Switch turn for Chess Clock
-                if (chessClock != null) chessClock.switchTurn(board.getCurrentPlayer());
-
-                viewPerspective = board.getCurrentPlayer();
-            } else {
-                board.setWaitingForDuck(true);
+        // Checkmate / Stalemate (Classical)
+        else if (!isGameOver && !board.isWaitingForDuck()) {
+            PieceColor activePlayer = board.getCurrentPlayer();
+            if (gameRules.isCheckmate(board, activePlayer)) {
+                PieceColor winner = activePlayer.next();
+                showGameOverDialog("CHECKMATE!\n" + winner + " wins!");
+            } else if (gameRules.isStalemate(board, activePlayer)) {
+                String msg = (gameRules instanceof DuckChessVariant)
+                        ? "STALEMATE!\n" + activePlayer + " has no moves and WINS!"
+                        : "STALEMATE!\nThe game is a draw.";
+                showGameOverDialog(msg);
             }
-        } else {
-            // Classical / Fog / Crazyhouse
-            board.switchTurn();
-
-            // Switch turn for Chess Clock
-            if (chessClock != null) chessClock.switchTurn(board.getCurrentPlayer());
-
-            viewPerspective = board.getCurrentPlayer();
+            // 50-Move Rule
+            else if (gameRules.isDrawBy50MoveRule(board) && !(gameRules instanceof ChaturajiVariant)) {
+                showGameOverDialog("DRAW!\n50-move rule (no pawn moves or captures).");
+            }
         }
 
-        // Fog of War Logic
-        if (gameRules instanceof FogOfWarVariant) {
+        // Fog of War UI
+        if (gameRules instanceof FogOfWarVariant && !isReplayMode &&
+                (move.capturedPiece() == null || move.capturedPiece().getType() != PieceType.KING)) {
+            // Only show Pass Turn dialog if NOT in replay mode
+
+
             // PAUSE CLOCK
             if (chessClock != null) chessClock.stop();
 
             isBlindMode = true;
             repaint();
+
             SwingUtilities.invokeLater(() -> {
                 Frame parent = (Frame) SwingUtilities.getWindowAncestor(BoardPanel.this);
                 new PassTurnDialog(parent, board.getCurrentPlayer()).setVisible(true);
@@ -1099,33 +1113,9 @@ public class BoardPanel extends JPanel {
                 calculateVisibility();
                 repaint();
             });
-        }
-
-        // Checkmate / Stalemate Checks
-        if (!isGameOver && !board.isWaitingForDuck()) {
-            PieceColor activePlayer = board.getCurrentPlayer();
-
-            // Checkmate
-            if (gameRules.isCheckmate(board, activePlayer)) {
-                PieceColor winner = activePlayer.next();
-                showGameOverDialog("CHECKMATE!\n" + winner + " wins!");
-            }
-            // Stalemate
-            else if (gameRules.isStalemate(board, activePlayer)) {
-                String message;
-                if (gameRules instanceof model.rules.DuckChessVariant) {
-                    // Duck Chess Special Rule
-                    message = "STALEMATE!\n" + activePlayer + " has no moves and WINS!";
-                } else {
-                    // Standard Rule
-                    message = "STALEMATE!\nThe game is a draw.";
-                }
-                showGameOverDialog(message);
-            }
-            // 50-Move Rule
-            else if (gameRules.isDrawBy50MoveRule(board)) {
-                showGameOverDialog("DRAW!\n50-move rule (no pawn moves or captures).");
-            }
+        } else if (gameRules instanceof FogOfWarVariant) {
+            // In Replay, just recalculate visibility without dialog
+            calculateVisibility();
         }
 
         clearSelections();
@@ -1145,9 +1135,12 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * Helper to print scores and winners in Chaturaji.
+     * Helper to print scores and winners in Chaturaji, and save the game.
      */
     private void printChaturajiStandings() {
+        // Lock the game
+        isGameOver = true;
+
         PieceColor[] players = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
 
         int maxScore = -1;
@@ -1187,6 +1180,15 @@ public class BoardPanel extends JPanel {
         sb.append(winnerMsg).append("!");
 
         clearSelections();
+
+        if (!isReplayMode) {
+            // Get moves chronologically
+            String resultString = winnerMsg.toString();
+            List<Move> allMoves = new ArrayList<>(board.getMoveHistory());
+
+            // Save Game
+            GameSaver.saveGame(currentModeName, resultString, allMoves);
+        }
 
         // Show Popup
         SwingUtilities.invokeLater(() -> {
@@ -1233,14 +1235,7 @@ public class BoardPanel extends JPanel {
                     // HIT! We clicked a piece in reserve.
 
                     // Create a "Virtual" Piece for dragging (We use -1, -1 to indicate it's not on the board)
-                    Piece virtualPiece;
-                    switch (type) {
-                        case ROOK -> virtualPiece = new Rook(myColor, -1, -1);
-                        case KNIGHT -> virtualPiece = new Knight(myColor, -1, -1);
-                        case BISHOP -> virtualPiece = new Bishop(myColor, -1, -1);
-                        case QUEEN -> virtualPiece = new Queen(myColor, -1, -1);
-                        default -> virtualPiece = new Pawn(myColor, -1, -1);
-                    }
+                    Piece virtualPiece = getDropPieceFromType(myColor, type);
 
                     // Set Drag State
                     draggedPiece = virtualPiece;
@@ -1256,6 +1251,245 @@ public class BoardPanel extends JPanel {
                 }
                 return;
             }
+        }
+    }
+
+    /**
+     * Starts the replay of given game.
+     * @param record a chess match
+     */
+    public void startReplay(GameRecord record) {
+        // Set the board up like a new game of that variant
+        setupGame(record.variant(), null); // null clock
+
+        // Set Replay State
+        isReplayMode = true;
+        replayMoves = record.moves();
+        currentReplayIndex = 0;
+        isGameOver = true; // Disable moving pieces
+
+        // Request Focus for KeyListener
+        setFocusable(true);
+        requestFocusInWindow();
+
+        repaint();
+    }
+
+    /**
+     * Helper to step forward/backward in replay.
+     * @param direction forward if greater than 0, backward otherwise
+     */
+    public void replayStep(int direction) {
+        if (!isReplayMode) return;
+
+        if (direction > 0) {
+            // --- STEP FORWARD ---
+            if (currentReplayIndex < replayMoves.size()) {
+                SavedMove saved = replayMoves.get(currentReplayIndex);
+                Move move = convertSavedMove(saved);
+
+                if (move != null) {
+                    finalizeTurn(move); // Execute + UI Updates
+                    currentReplayIndex++;
+
+                    // Correct the Rotation
+                    updateReplayPerspective();
+
+                    // Correct the Fog
+                    if (gameRules instanceof FogOfWarVariant) {
+                        calculateVisibility();
+                    }
+
+                    repaint();
+                }
+            }
+        } else {
+            // --- STEP BACKWARD ---
+            if (currentReplayIndex > 0) {
+                int targetIndex = currentReplayIndex - 1;
+
+                // Reset Board to Start
+                setupGame(currentModeName, null);
+
+                // Restore Replay State
+                isReplayMode = true;
+                isGameOver = true;
+
+                // FAST FORWARD (Silent)
+                // Instead of actually stepping back, it's much more simple to start from the beginning
+                // and step forward until reaching the desired move.
+                for (int i = 0; i < targetIndex; i++) {
+                    Move m = convertSavedMove(replayMoves.get(i));
+                    if (m != null) {
+                        executeMoveLogic(m); // Pure Logic, No UI
+                    }
+                }
+
+                currentReplayIndex = targetIndex;
+
+                // Update Visuals Once
+                if (gameRules instanceof FogOfWarVariant) {
+                    calculateVisibility();
+                }
+
+                // Correct the Rotation
+                updateReplayPerspective();
+
+                // Correct the Fog
+                if (gameRules instanceof FogOfWarVariant) {
+                    calculateVisibility();
+                }
+
+                repaint();
+            }
+        }
+    }
+
+    /**
+     * Updates the perspective that we always see the board like the person who made the move.
+     */
+    private void updateReplayPerspective() {
+        Move lastMove = board.getLastMove();
+
+        // Start of Game (No moves yet) -> Default View
+        if (lastMove == null) {
+            this.viewPerspective = (gameRules instanceof ChaturajiVariant)
+                    ? PieceColor.RED
+                    : PieceColor.WHITE;
+            return;
+        }
+
+        PieceColor pieceColor = lastMove.piece().getColor();
+
+        // Standard Move -> View matches Piece Color
+        if (pieceColor != PieceColor.SPECIAL) {
+            this.viewPerspective = pieceColor;
+        }
+        // Duck Move (Special Color) -> View matches the player who just finished turn
+        else {
+            this.viewPerspective = board.getCurrentPlayer().next();
+        }
+    }
+
+    /**
+     * Helper to convert a saved move to a "real" one that can be executed.
+     * @param saved saved move that is read from the JSON file of the match.
+     * @return converted move that can be executed
+     */
+    private Move convertSavedMove(SavedMove saved) {
+        int sr = saved.sr();
+        int sc = saved.sc();
+        int er = saved.er();
+        int ec = saved.ec();
+
+        MoveType type = MoveType.valueOf(saved.type());
+
+        Piece piece;
+        if (type == MoveType.DROP) {
+            // Determine Color
+            PieceColor color = board.getCurrentPlayer();
+
+            // Determine Type from Saved Data
+            PieceType dropType;
+            if (saved.dropPiece() != null) {
+                dropType = PieceType.valueOf(saved.dropPiece());
+            } else {
+                // Fallback for old save files (assume Pawn)
+                dropType = PieceType.PAWN;
+            }
+
+            // Create the correct piece
+            piece = getDropPieceFromType(color, dropType);
+
+            return Move.createDropMove(piece, er, ec);
+
+        } else {
+            // --- STANDARD MOVE LOGIC ---
+            piece = board.getPiece(sr, sc);
+
+            if (piece == null) return null;
+
+            Piece target = board.getPiece(er, ec);
+            Move move = new Move(piece, sr, sc, er, ec, type, target);
+
+            if (saved.promo() != null) {
+                PieceType pType = PieceType.valueOf(saved.promo());
+                move = new Move(move, pType);
+            }
+            return move;
+        }
+    }
+
+    /**
+     * Helper to create a drop piece from given type and color.
+     * @param color color of the piece
+     * @param dropType type of the piece
+     * @return new piece that can be dropped on the board
+     */
+    private Piece getDropPieceFromType(PieceColor color, PieceType dropType) {
+        Piece piece;
+        switch (dropType) {
+            case ROOK -> piece = new Rook(color, -1, -1);
+            case KNIGHT -> piece = new Knight(color, -1, -1);
+            case BISHOP -> piece = new Bishop(color, -1, -1);
+            case QUEEN -> piece = new Queen(color, -1, -1);
+            default -> piece = new Pawn(color, -1, -1);
+        }
+        return piece;
+    }
+
+    /**
+     * Executes purely the move without opening dialogs, switch turns checking game end conditions etc.
+     * @param move move to be executed
+     */
+    private void executeMoveLogic(Move move) {
+        // Update Points & Handle Player Death
+        board.executeMove(move);
+
+        // Chaturaji Logic
+        if (gameRules instanceof ChaturajiVariant chaturajiRules) {
+            // Update Points & Handle Player Death
+            chaturajiRules.handlePostMoveLogic(board, move);
+
+            board.switchTurn();
+            viewPerspective = board.getCurrentPlayer();
+
+            // Switch turn for Chess Clock
+            if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+
+            return;
+        }
+
+        // Duck Chess Logic
+        if (gameRules instanceof DuckChessVariant) {
+            if (move.type() == MoveType.DUCK) {
+                board.setWaitingForDuck(false);
+                board.switchTurn();
+                viewPerspective = board.getCurrentPlayer();
+
+                // Switch turn for Chess Clock
+                if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+            } else {
+                board.setWaitingForDuck(true);
+            }
+        }
+        // Fog of War
+        else if (gameRules instanceof FogOfWarVariant) {
+            if (move.capturedPiece() == null || move.capturedPiece().getType() != PieceType.KING) {
+                board.switchTurn();
+                viewPerspective = board.getCurrentPlayer();
+
+                // Switch turn for Chess Clock
+                if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+            }
+        }
+        // Classical / Crazyhouse
+        else {
+            board.switchTurn();
+            viewPerspective = board.getCurrentPlayer();
+
+            // Switch turn for Chess Clock
+            if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
         }
     }
 

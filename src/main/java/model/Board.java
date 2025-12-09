@@ -539,4 +539,12 @@ public class Board {
         }
         return count;
     }
+
+    /**
+     * Used by GameSaver to get the list of moves to save.
+     * @return moves that have been made in the match
+     */
+    public Stack<Move> getMoveHistory() {
+        return moveHistory;
+    }
 }

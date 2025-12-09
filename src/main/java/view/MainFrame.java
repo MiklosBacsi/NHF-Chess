@@ -1,6 +1,7 @@
 package view;
 
 import controller.GameController;
+import model.GameRecord;
 import model.TimeSettings;
 import view.game.BoardTheme;
 import view.game.GamePanel;
@@ -18,8 +19,11 @@ import java.awt.*;
 public class MainFrame extends JFrame {
 
     private final GameController controller;
-    private final JPanel cards;
-    private final GamePanel gamePanel;
+
+    private JPanel mainContainer;
+
+    private GamePanel gamePanel;
+    private HistoryPanel historyPanel; // Promote to field
 
     /**
      * Constructor that creates the various items.
@@ -33,25 +37,9 @@ public class MainFrame extends JFrame {
         setSize(1100, 740);
         setLocationRelativeTo(null);
 
-        // Initialize Card Layout
-        cards = new JPanel(new CardLayout());
+        // Initialize Components & Screens
+        initScreens();
 
-        // ==== Create Screens ====
-        // Menu: Passes the "Start Game" action to controller
-        MainMenuPanel menuPanel = new MainMenuPanel(GameController.MODES, controller::startNewGame);
-
-        // Game: Passes the "Back" action to controller
-        gamePanel = new GamePanel(() -> controller.showScene(GameController.MENU));
-
-        // History: Passes the "Back" action to controller
-        HistoryPanel historyPanel = new HistoryPanel(() -> controller.showScene(GameController.MENU));
-
-        // Add to Cards
-        cards.add(menuPanel, GameController.MENU);
-        cards.add(gamePanel, GameController.GAME);
-        cards.add(historyPanel, GameController.HISTORY);
-
-        add(cards);
         setJMenuBar(createMenuBar());
 
         pack();
@@ -89,11 +77,11 @@ public class MainFrame extends JFrame {
 
     /**
      * Switches the view to the card.
-     * @param cardName name of the card to show
+     * @param name name of the card to be shown
      */
-    public void showCard(String cardName) {
-        CardLayout cl = (CardLayout) cards.getLayout();
-        cl.show(cards, cardName);
+    public void showCard(String name) {
+        CardLayout cl = (CardLayout) mainContainer.getLayout();
+        cl.show(mainContainer, name);
     }
 
     /**
@@ -184,5 +172,51 @@ public class MainFrame extends JFrame {
      */
     public void setBoardTheme(BoardTheme theme) {
         gamePanel.setBoardTheme(theme);
+    }
+
+    /**
+     * Initializes the screens (panels).
+     */
+    private void initScreens() {
+        // Initialize Layout and Container
+        CardLayout cardLayout = new CardLayout();
+        mainContainer = new JPanel(cardLayout);
+
+        // --- Create Screens ---
+        // Menu: Passes the "Start Game" action to controller
+        MainMenuPanel mainMenuPanel = new MainMenuPanel(
+                GameController.MODES,
+                controller::startNewGame
+        );
+
+        // Game: Passes the "Back" action to controller
+        gamePanel = new GamePanel(() -> controller.showScene(GameController.MENU));
+
+        // History Panel Setup
+        historyPanel = new HistoryPanel(
+                () -> controller.showScene(GameController.MENU),
+
+                (GameRecord record) -> {
+                    controller.showScene(GameController.GAME);
+                    gamePanel.startReplay(record);
+                }
+        );
+        historyPanel.refresh(); // Load data immediately
+
+        // Add to Container
+        mainContainer.add(mainMenuPanel, GameController.MENU);
+        mainContainer.add(gamePanel, GameController.GAME);
+        mainContainer.add(historyPanel, GameController.HISTORY);
+
+        // Set Content Pane
+        setContentPane(mainContainer);
+    }
+
+    /**
+     * Used by Controller to refresh history
+     * @return history panel
+     */
+    public HistoryPanel getHistoryPanel() {
+        return historyPanel;
     }
 }

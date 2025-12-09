@@ -1,5 +1,6 @@
 package view.game;
 
+import model.GameRecord;
 import model.TimeSettings;
 
 import javax.swing.*;
@@ -89,5 +90,17 @@ public class GamePanel extends JPanel {
      */
     public void stopGame() {
         boardPanel.stopGame();
+    }
+
+    /**
+     * Start the replay of a match.
+     * @param record chess match
+     */
+    public void startReplay(GameRecord record) {
+        // Update the top label to show we are in Replay mode
+        setGameModeText("Replay: " + record.variant());
+
+        // Delegate logic to the board
+        boardPanel.startReplay(record);
     }
 }
