@@ -3,8 +3,8 @@ package model;
 /**
  * It represents the Chess Clock's properties.
  * Format: initialMinutes | incrementSeconds
- * @param initialMinutes
- * @param incrementSeconds
+ * @param initialMinutes initial minutes
+ * @param incrementSeconds that many seconds are added to the remaining time after each move of the player
  * @author Miklós Bácsi
  */
 public record TimeSettings(int initialMinutes, int incrementSeconds) {

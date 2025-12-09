@@ -31,7 +31,11 @@ public abstract class Piece {
         this.col = col;
     }
 
-    // It returns geometric moves (ignoring "Check" or "King Safety"), every piece must implement it
+    /**
+     * It returns geometric moves (ignoring "Check" or "King Safety"), every piece must implement it.
+     * @param board board to check on
+     * @return geometrically possible moves
+     */
     public abstract List<Move> getPseudoLegalMoves(Board board);
 
 
@@ -136,6 +140,7 @@ public abstract class Piece {
     // --- GETTERS (Used by View) ---
 
     /**
+     * Helper to get name of the file
      * @return file name of piece for the texture
      */
     public String getFilename() {
@@ -143,26 +148,31 @@ public abstract class Piece {
     }
 
     /**
+     * Getter
      * @return row index of piece
      */
     public int getRow() { return row; }
 
     /**
+     * Getter
      * @return column index of piece
      */
     public int getCol() { return col; }
 
     /**
+     * Getter
      * @return color of piece
      */
     public PieceColor getColor() { return color; }
 
     /**
+     * Getter
      * @return type of piece
      */
     public PieceType getType() { return type; }
 
     /**
+     * Getter
      * @return whether piece has moved
      */
     public boolean hasMoved() { return hasMoved; }

@@ -17,7 +17,7 @@ public class ChessClock {
 
     /**
      * Constructor for Chess Clock.
-     * @param settings properties of the clock (initial time & incrementing seconds)
+     * @param settings properties of the clock (initial time and incrementing seconds)
      */
     public ChessClock(TimeSettings settings) {
         this.incrementMillis = settings.getIncrementMillis();

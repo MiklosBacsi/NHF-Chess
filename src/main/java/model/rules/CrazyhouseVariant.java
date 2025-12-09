@@ -59,7 +59,7 @@ public class CrazyhouseVariant extends ClassicalVariant {
     }
 
     /**
-     * Checks whether the player has any legal moves (standard & drop), so that he is not checkmated.
+     * Checks whether the player has any legal moves (standard and drop), so that he is not checkmated.
      * @param board board to check on
      * @param color color of the player to check
      * @return if the player has any legal moves
