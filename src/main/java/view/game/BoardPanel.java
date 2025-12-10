@@ -66,11 +66,14 @@ public class BoardPanel extends JPanel {
     private final PieceType[] RESERVE_ORDER = {
             PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN
     };
-    // For Game History
+    // --- For Game History ---
     private String currentModeName = "Classical";
     private boolean isReplayMode = false;
     private List<SavedMove> replayMoves;
     private int currentReplayIndex = 0;
+    // Perspective Control
+    private final JButton switchPerspectiveBtn;
+    private PieceColor lockedReplayPerspective = null; // null = Auto (Follow Move)
 
     // Cached calculation values to share between paint() and mouse listeners
     private int startX, startY, squareSize;
@@ -85,11 +88,24 @@ public class BoardPanel extends JPanel {
         this.board = new Board();
         setOpaque(false);
         setFocusable(true); // enable keyboard
+        // setLayout(null);
 
         loadResources();
 
         // Default startup
         this.gameRules = new ClassicalVariant();
+
+        // Perspective Button
+        switchPerspectiveBtn = new JButton("View: Dynamic");
+        switchPerspectiveBtn.setFocusable(false); // Don't steal focus from KeyListener
+        switchPerspectiveBtn.setBackground(new Color(60, 60, 60));
+        switchPerspectiveBtn.setForeground(Color.WHITE);
+        switchPerspectiveBtn.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        switchPerspectiveBtn.setVisible(false); // Hidden by default
+
+        switchPerspectiveBtn.addActionListener(e -> cycleReplayPerspective());
+
+        add(switchPerspectiveBtn);
 
         // Initialize Mouse Listeners
         MouseAdapter mouseHandler = new DragController();
@@ -334,6 +350,66 @@ public class BoardPanel extends JPanel {
     }
 
     /**
+     * Helper that helps us cycle through different perspectives in Game History.
+     */
+    private void cycleReplayPerspective() {
+        PieceColor[] cycle;
+
+        // Determine the cycle order based on Variant
+        if (gameRules instanceof ChaturajiVariant) {
+            cycle = new PieceColor[]{PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
+        } else {
+            cycle = new PieceColor[]{PieceColor.WHITE, PieceColor.BLACK};
+        }
+
+        // Logic: null (Dynamic) -> First Color -> Second Color -> ... -> null
+        if (lockedReplayPerspective == null) {
+            // Switch to first color
+            lockedReplayPerspective = cycle[0];
+        } else {
+            // Find current index
+            int index = -1;
+            for (int i = 0; i < cycle.length; i++) {
+                if (cycle[i] == lockedReplayPerspective) {
+                    index = i;
+                    break;
+                }
+            }
+
+            // Go to next, or back to null if at end
+            if (index == cycle.length - 1) {
+                lockedReplayPerspective = null; // Back to Dynamic
+            } else {
+                lockedReplayPerspective = cycle[index + 1];
+            }
+        }
+
+        // Update Text
+        updatePerspectiveButtonText();
+
+        // Apply Change immediately
+        updateReplayPerspective();
+
+        // Update Fog if necessary
+        if (gameRules instanceof FogOfWarVariant) {
+            calculateVisibility();
+        }
+
+        repaint();
+    }
+
+    /**
+     * Helper to update text of perspective button.
+     */
+    private void updatePerspectiveButtonText() {
+        if (lockedReplayPerspective == null) {
+            switchPerspectiveBtn.setText("View: Dynamic");
+        } else {
+            switchPerspectiveBtn.setText("View: " + lockedReplayPerspective);
+        }
+    }
+
+    /**
      * This method is responsible for drawing the board with its pieces.
      * @param g Graphics (drawing on this)
      */
@@ -346,6 +422,35 @@ public class BoardPanel extends JPanel {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+        // --- Position Perspective Button ---
+        if (isReplayMode) {
+            if (!switchPerspectiveBtn.isVisible()) {
+                switchPerspectiveBtn.setVisible(true);
+                updatePerspectiveButtonText(); // Ensure text is correct on first show
+            }
+
+            int btnWidth = 120;
+            int btnHeight = 30;
+            int boardCenter = startX + (squareSize * 4);
+
+            // Place it 40px above the board (centered horizontally)
+            int btnX = boardCenter - (btnWidth / 2);
+            int btnY = startY - btnHeight - 6;
+
+            if (gameRules instanceof ChaturajiVariant) {
+                btnY -= 25;
+            }
+            if (gameRules instanceof CrazyhouseVariant) {
+                btnY -= 80;
+            }
+
+            switchPerspectiveBtn.setBounds(btnX, btnY, btnWidth, btnHeight);
+        } else {
+            if (switchPerspectiveBtn.isVisible()) {
+                switchPerspectiveBtn.setVisible(false);
+            }
+        }
 
         // --- RESPONSIVE LAYOUT ---
         // Calculate available space
@@ -1413,6 +1518,11 @@ public class BoardPanel extends JPanel {
         currentReplayIndex = 0;
         isGameOver = true; // Disable moving pieces
 
+        // Reset Replay Perspective
+        lockedReplayPerspective = null;
+        switchPerspectiveBtn.setVisible(false); // Hidden by default, to update text on start-up
+        updateReplayPerspective();
+
         // Request Focus for KeyListener
         setFocusable(true);
         requestFocusInWindow();
@@ -1494,6 +1604,13 @@ public class BoardPanel extends JPanel {
      * Updates the perspective that we always see the board like the person who made the move.
      */
     private void updateReplayPerspective() {
+        // If Locked, force that perspective
+        if (lockedReplayPerspective != null) {
+            this.viewPerspective = lockedReplayPerspective;
+            return;
+        }
+
+        // Otherwise, use Dynamic Logic
         Move lastMove = board.getLastMove();
 
         // Start of Game (No moves yet) -> Default View
