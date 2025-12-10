@@ -274,6 +274,8 @@ public class Board {
         return switch (piece.getType()) {
             case PAWN -> new Pawn(PieceColor.GREY, piece.getRow(), piece.getCol());
             case KING -> new King(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case QUEEN -> new Queen(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case ROOK -> new Rook(PieceColor.GREY, piece.getRow(), piece.getCol());
             case BOAT -> new Boat(PieceColor.GREY, piece.getRow(), piece.getCol());
             case KNIGHT -> new Knight(PieceColor.GREY, piece.getRow(), piece.getCol());
             case BISHOP -> new Bishop(PieceColor.GREY, piece.getRow(), piece.getCol());

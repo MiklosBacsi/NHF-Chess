@@ -275,45 +275,35 @@ public class BoardPanel extends JPanel {
      * Loads the textures in memory
      */
     private void loadResources() {
+        // Standard black & white pieces
         String[] colors = {"white", "black"};
         String[] types = {"pawn", "rook", "knight", "bishop", "queen", "king"};
-
-        // Standard black & white pieces
-        for (String c : colors) {
-            for (String t : types) {
-                // The key will be "white-pawn" (matches Piece.getFilename())
-                String key = c + "-" + t;
-
-                // The path matches your structure: /piece/white/pawn.png
-                String path = "/piece/" + c + "/" + t + ".png";
-
-                try {
-                    URL url = getClass().getResource(path);
-                    if (url != null) {
-                        pieceImages.put(key, ImageIO.read(url));
-                    } else {
-                        System.err.println("Image not found: " + path);
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+        loadTextures(colors, types);
 
         // Duck
-        try {
-            URL url = getClass().getResource("/piece/special/duck.png");
-            if (url != null) pieceImages.put("special-duck", ImageIO.read(url));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        String[] duckColor = {"special"};
+        String[] duckType = {"duck"};
+        loadTextures(duckColor, duckType);
 
         // Chaturaji
-        String[] chaturajiColors = {"red", "blue", "yellow", "green", "grey"};
+        String[] chaturajiColors = {"red", "blue", "yellow", "green"};
         String[] chaturajiTypes = {"pawn", "boat", "knight", "bishop", "king"};
+        loadTextures(chaturajiColors, chaturajiTypes);
 
-        for (String c : chaturajiColors) {
-            for (String t : chaturajiTypes) {
+        // Dead pieces
+        String[] deadColor = {"grey"};
+        String[] deadTypes = {"pawn", "rook", "boat", "knight", "bishop", "queen", "king"};
+        loadTextures(deadColor, deadTypes);
+    }
+
+    /**
+     * Helper to load textures.
+     * @param deadColor color of the dead pieces (grey)
+     * @param deadTypes types of the dead pieces
+     */
+    private void loadTextures(String[] deadColor, String[] deadTypes) {
+        for (String c : deadColor) {
+            for (String t : deadTypes) {
                 // The key will be "red-boat" (matches Piece.getFilename())
                 String key = c + "-" + t;
 
@@ -373,16 +363,8 @@ public class BoardPanel extends JPanel {
         this.startX = (width - boardPixelSize) / 2;
         this.startY = (height - boardPixelSize) / 2;
 
-        // Determine how many last moves to highlight
-        int movesToShow = 1; // Default (Classical)
-
-        if (gameRules instanceof DuckChessVariant) {
-            movesToShow = 2; // Piece Move + Duck Move
-        } else if (gameRules instanceof  ChaturajiVariant) {
-            movesToShow = Math.max(board.getAlivePlayerCount() - 1, 1);
-        }
-
-        List<Move> recentMoves = board.getLastMoves(movesToShow);
+        // Determine last moves to highlight
+        List<Move> recentMoves = getRecentMovesForHighlight();
 
         // Checks
         boolean whiteInCheck = gameRules.isCheck(board, PieceColor.WHITE);
@@ -394,152 +376,205 @@ public class BoardPanel extends JPanel {
 
         Move lastMove = board.getLastMove();
 
-        boolean isFoggyGame = (gameRules instanceof FogOfWarVariant);
-
         // Helper: What are we focusing on? Dragged takes priority, then Selected.
         Piece activePiece = (draggedPiece != null) ? draggedPiece : selectedPiece;
         List<Move> activeMoves = (draggedPiece != null) ? currentLegalMoves : selectedLegalMoves;
 
-        // Draw the Board & Pieces
+        // --- DRAW BOARD & PIECES ---
         for (int row = 0; row < 8; row++) {
             for (int col = 0; col < 8; col++) {
-                // TRANSFORM TO VISUAL COORDS
-                int visualRow = getVisualRow(row, col);
-                int visualCol = getVisualCol(row, col);
-
-                int x = startX + (visualCol * squareSize);
-                int y = startY + (visualRow * squareSize);
-
-                // VISIBILITY CHECK
-                // Point uses x=col, y=row
-                boolean isVisible = visibleSquares.contains(new Point(col, row));
-
-                // If Blind Mode is ON, everything is hidden
-                if (isBlindMode) isVisible = false;
-
-                // If not a Fog game, everything is visible
-                if (!isFoggyGame) isVisible = true;
-
-
-                // Determine color of square
-                boolean isLightSquare = (row + col) % 2 == 0;
-                if (isLightSquare) {
-                    g2d.setColor(currentTheme.getLight());
-                } else {
-                    g2d.setColor(currentTheme.getDark());
-                }
-
-                // Draw the square (Background)
-                g2d.fillRect(x, y, squareSize, squareSize);
-
-                // --- DRAW COORDINATES ---
-                int fontSize = Math.max(12, squareSize / 5);
-                g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
-
-                // Text Color: Inverse of the square color
-                if (isLightSquare) g2d.setColor(currentTheme.getDark());
-                else g2d.setColor(currentTheme.getLight());
-
-                int padding = fontSize / 4;
-
-                // Determine if board is "Upright" (Red/Yellow/White/Black) or "Sideways" (Blue/Green)
-                boolean isUpright = (viewPerspective == PieceColor.RED ||
-                        viewPerspective == PieceColor.YELLOW ||
-                        viewPerspective == PieceColor.WHITE ||
-                        viewPerspective == PieceColor.BLACK);
-
-                // LEFT EDGE (Visual Vertical Axis)
-                if (visualCol == 0) {
-                    String label;
-                    if (isUpright) {
-                        // Standard: Vertical axis shows Ranks (1-8)
-                        label = String.valueOf(8 - row);
-                    } else {
-                        // Sideways: Vertical axis shows Files (a-h)
-                        label = String.valueOf((char)('a' + col));
-                    }
-                    g2d.drawString(label, x + padding, y + fontSize);
-                }
-
-                // BOTTOM EDGE (Visual Horizontal Axis)
-                if (visualRow == 7) {
-                    String label;
-                    if (isUpright) {
-                        // Standard: Horizontal axis shows Files (a-h)
-                        label = String.valueOf((char)('a' + col));
-                    } else {
-                        // Sideways: Horizontal axis shows Ranks (1-8)
-                        label = String.valueOf(8 - row);
-                    }
-
-                    int textWidth = g2d.getFontMetrics().stringWidth(label);
-                    g2d.drawString(label, x + squareSize - textWidth - (padding * 3 / 4), y + squareSize - padding);
-                }
-
-
-                // IF NOT VISIBLE -> DRAW FOG AND SKIP CONTENT
-                if (!isVisible) {
-                    // Use the GREY theme colors to represent fog
-                    if ((row + col) % 2 == 0) {
-                        g2d.setColor(BoardTheme.GREY.getLight());
-                    } else {
-                        g2d.setColor(BoardTheme.GREY.getDark());
-                    }
-                    g2d.fillRect(x, y, squareSize, squareSize);
-                    continue; // STOP HERE for this square (Don't draw pieces/highlights)
-                }
-
-
-                // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
-
-                // Draw Last Move Highlights (Recent Moves) (only draw if NOT dragging, and there is a history)
-                if (draggedPiece == null) {
-                    // Loop through the list of recent moves
-                    for (Move move : recentMoves) {
-                        boolean isStart = (move.startRow() == row && move.startCol() == col);
-                        boolean isEnd = (move.endRow() == row && move.endCol() == col);
-
-                        if (isStart || isEnd) {
-                            g2d.setColor(moveHighlightColor);
-                            g2d.fillRect(x, y, squareSize, squareSize);
-                            // We don't break here, because we can draw multiple times on the same square
-                        }
-                    }
-                }
-
-                // Draw Source Highlight (if it's the dragged piece or selected piece)
-                if (activePiece != null && activePiece.getRow() == row && activePiece.getCol() == col) {
-                    g2d.setColor(moveHighlightColor);
-                    g2d.fillRect(x, y, squareSize, squareSize);
-                }
-
-                // Draw Target Highlight (White)
-                if (draggedPiece != null && hoverSquare != null && hoverSquare.y == row && hoverSquare.x == col) {
-                    g2d.setColor(targetHighlightColor);
-                    g2d.fillRect(x, y, squareSize, squareSize);
-                }
-
-                // --- Check Highlight (Red) ---
-                // If White is in Check AND this is the White King's square -> Paint Red
-                if (whiteInCheck && whiteKing != null && whiteKing.getRow() == row && whiteKing.getCol() == col) {
-                    g2d.setColor(checkHighlightColor);
-                    g2d.fillRect(x, y, squareSize, squareSize);
-                }
-                // If Black is in Check AND this is the Black King's square -> Paint Red
-                if (blackInCheck && blackKing != null && blackKing.getRow() == row && blackKing.getCol() == col) {
-                    g2d.setColor(checkHighlightColor);
-                    g2d.fillRect(x, y, squareSize, squareSize);
-                }
-
-                // --- Draw Piece (if it's not being dragged) ---
-                Piece piece = board.getPiece(row, col);
-                if (piece != null && piece != draggedPiece) {
-                    drawPiece(g2d, piece, x, y);
-                }
+                drawSingleSquareWithPieceAndHighlights(
+                        row, col, g2d, recentMoves, activePiece, whiteKing, blackKing, whiteInCheck, blackInCheck
+                );
             }
         }
 
         // Draw Move Hints (Dots and Rings)
+        drawMoveHints(g2d, activePiece, activeMoves);
+
+        // Draw a border around the whole board for a cleaner look
+        g2d.setColor(Color.BLACK);
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRect(startX, startY, boardPixelSize, boardPixelSize);
+
+        // --- Draw Dragged Piece (On Top) ---
+        if (draggedPiece != null) {
+            // Draw at mouse position (adjusted by offset)
+            drawPiece(g2d, draggedPiece, dragX - dragOffsetX, dragY - dragOffsetY);
+        }
+
+        // --- DRAW RESERVES (Only in Crazyhouse) ---
+        if (gameRules instanceof CrazyhouseVariant) {
+            drawReserves(g2d);
+        }
+
+        // --- DRAW SCORES (Chaturaji) ---
+        drawScores(g2d);
+
+        // --- DRAW CLOCK ---
+        drawClocks(g2d);
+
+        // --- DRAW REVIEW INDICATOR ---
+        drawReviewIndicator(g);
+    }
+
+    /**
+     * Helper to draw a single square with piece and highlights.
+     * @param row row index
+     * @param col column index
+     * @param g2d Graphics2D to draw on
+     * @param recentMoves list of the recent move that get highlighted
+     * @param activePiece active piece
+     * @param whiteKing white king
+     * @param blackKing black king
+     * @param whiteInCheck contains whether the white king is in check
+     * @param blackInCheck contains whether the black king is in check
+     */
+    private void drawSingleSquareWithPieceAndHighlights(
+            int row, int col, Graphics2D g2d, List<Move> recentMoves, Piece activePiece,
+            Piece whiteKing, Piece blackKing, boolean whiteInCheck, boolean blackInCheck
+    )   {
+
+        // TRANSFORM TO VISUAL COORDS
+        int visualRow = getVisualRow(row, col);
+        int visualCol = getVisualCol(row, col);
+
+        int x = startX + (visualCol * squareSize);
+        int y = startY + (visualRow * squareSize);
+
+        // VISIBILITY CHECK
+        // Point uses x=col, y=row
+        boolean isVisible = visibleSquares.contains(new Point(col, row));
+
+        // If Blind Mode is ON, everything is hidden
+        if (isBlindMode) isVisible = false;
+
+        // If not a Fog game, everything is visible
+        if (!(gameRules instanceof FogOfWarVariant)) isVisible = true;
+
+
+        // Determine color of square
+        boolean isLightSquare = (row + col) % 2 == 0;
+        if (isLightSquare) {
+            g2d.setColor(currentTheme.getLight());
+        } else {
+            g2d.setColor(currentTheme.getDark());
+        }
+
+        // Draw the square (Background)
+        g2d.fillRect(x, y, squareSize, squareSize);
+
+        // --- DRAW COORDINATES ---
+        int fontSize = Math.max(12, squareSize / 5);
+        g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
+
+        // Text Color: Inverse of the square color
+        if (isLightSquare) g2d.setColor(currentTheme.getDark());
+        else g2d.setColor(currentTheme.getLight());
+
+        int padding = fontSize / 4;
+
+        // Determine if board is "Upright" (Red/Yellow/White/Black) or "Sideways" (Blue/Green)
+        boolean isUpright = (viewPerspective == PieceColor.RED ||
+                viewPerspective == PieceColor.YELLOW ||
+                viewPerspective == PieceColor.WHITE ||
+                viewPerspective == PieceColor.BLACK);
+
+        // LEFT EDGE (Visual Vertical Axis)
+        if (visualCol == 0) {
+            String label;
+            if (isUpright) {
+                // Standard: Vertical axis shows Ranks (1-8)
+                label = String.valueOf(8 - row);
+            } else {
+                // Sideways: Vertical axis shows Files (a-h)
+                label = String.valueOf((char)('a' + col));
+            }
+            g2d.drawString(label, x + padding, y + fontSize);
+        }
+
+        // BOTTOM EDGE (Visual Horizontal Axis)
+        if (visualRow == 7) {
+            String label;
+            if (isUpright) {
+                // Standard: Horizontal axis shows Files (a-h)
+                label = String.valueOf((char)('a' + col));
+            } else {
+                // Sideways: Horizontal axis shows Ranks (1-8)
+                label = String.valueOf(8 - row);
+            }
+
+            int textWidth = g2d.getFontMetrics().stringWidth(label);
+            g2d.drawString(label, x + squareSize - textWidth - (padding * 3 / 4), y + squareSize - padding);
+        }
+
+
+        // IF NOT VISIBLE -> DRAW FOG AND SKIP CONTENT
+        if (!isVisible) {
+            // Use the GREY theme colors to represent fog
+            if ((row + col) % 2 == 0) {
+                g2d.setColor(BoardTheme.GREY.getLight());
+            } else {
+                g2d.setColor(BoardTheme.GREY.getDark());
+            }
+            g2d.fillRect(x, y, squareSize, squareSize);
+            return; // STOP HERE for this square (Don't draw pieces/highlights)
+        }
+
+
+        // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
+
+        // Draw Last Move Highlights (Recent Moves) (only draw if NOT dragging, and there is a history)
+        if (draggedPiece == null) {
+            // Loop through the list of recent moves
+            for (Move move : recentMoves) {
+                boolean isStart = (move.startRow() == row && move.startCol() == col);
+                boolean isEnd = (move.endRow() == row && move.endCol() == col);
+
+                if (isStart || isEnd) {
+                    g2d.setColor(moveHighlightColor);
+                    g2d.fillRect(x, y, squareSize, squareSize);
+                    // We don't break here, because we can draw multiple times on the same square
+                }
+            }
+        }
+
+        // Draw Source Highlight (if it's the dragged piece or selected piece)
+        if (activePiece != null && activePiece.getRow() == row && activePiece.getCol() == col) {
+            g2d.setColor(moveHighlightColor);
+            g2d.fillRect(x, y, squareSize, squareSize);
+        }
+
+        // Draw Target Highlight (White)
+        if (draggedPiece != null && hoverSquare != null && hoverSquare.y == row && hoverSquare.x == col) {
+            g2d.setColor(targetHighlightColor);
+            g2d.fillRect(x, y, squareSize, squareSize);
+        }
+
+        // --- Check Highlight (Red) ---
+        // If White is in Check AND this is the White King's square -> Paint Red
+        if (whiteInCheck && whiteKing != null && whiteKing.getRow() == row && whiteKing.getCol() == col) {
+            g2d.setColor(checkHighlightColor);
+            g2d.fillRect(x, y, squareSize, squareSize);
+        }
+        // If Black is in Check AND this is the Black King's square -> Paint Red
+        if (blackInCheck && blackKing != null && blackKing.getRow() == row && blackKing.getCol() == col) {
+            g2d.setColor(checkHighlightColor);
+            g2d.fillRect(x, y, squareSize, squareSize);
+        }
+
+        // --- Draw Piece (if it's not being dragged) ---
+        Piece piece = board.getPiece(row, col);
+        if (piece != null && piece != draggedPiece) {
+            drawPiece(g2d, piece, x, y);
+        }
+    }
+
+    /**
+     * Helper to draw Move Hints (Dots and Rings).
+     * @param g2d Graphics2D to draw on
+     */
+    private void drawMoveHints(Graphics2D g2d, Piece activePiece, List<Move> activeMoves) {
         if (activePiece != null && activeMoves != null) {
             g2d.setColor(moveHintColor);
 
@@ -581,8 +616,59 @@ public class BoardPanel extends JPanel {
                 }
             }
         }
+    }
 
-        // --- REVIEW INDICATOR ---
+    /**
+     * Helper to determine recent moves for highlight.
+     * @return last moves that become highlighted on the board
+     */
+    private List<Move> getRecentMovesForHighlight () {
+        // Determine last moves to highlight
+        List<Move> recentMoves;
+
+        if (gameRules instanceof ChaturajiVariant) {
+            // Get raw history (max 4 moves)
+            // Note: getLastMoves returns [Newest, Older, Oldest...]
+            recentMoves = board.getLastMoves(4);
+
+            // Remove latest move when playing (and not replaying)
+            if (!(isReplayMode || isInGameReview)) {
+                if (recentMoves.size() == 4) {
+                    recentMoves.removeLast();
+                }
+            }
+
+            // Repetition Filter (Keep moves until we find a color that has already moved)
+            List<Move> filteredMoves = new ArrayList<>();
+            Set<PieceColor> seenColors = new HashSet<>();
+
+            for (Move move : recentMoves) {
+                PieceColor color = move.piece().getColor();
+
+                // Stop here to remove repetition
+                if (seenColors.contains(color)) {
+                    break;
+                }
+
+                seenColors.add(color);
+                filteredMoves.add(move);
+            }
+
+            recentMoves = filteredMoves;
+
+        } else {
+            // Default: show 1 move (2 in duck chess)
+            int movesToShow = (gameRules instanceof DuckChessVariant) ? 2 : 1;
+            recentMoves = board.getLastMoves(movesToShow);
+        }
+        return recentMoves;
+    }
+
+    /**
+     * Helper to draw review indicator in in-game replay.
+     * @param g Graphics to draw on
+     */
+    private void drawReviewIndicator(Graphics g) {
         if (isInGameReview) {
             String msg = "REVIEWING: " + reviewIndex + "/" + liveMoveHistoryBackup.size();
 
@@ -617,28 +703,6 @@ public class BoardPanel extends JPanel {
             g.setColor(Color.WHITE);
             g.drawString(msg, x, y);
         }
-
-        // Draw a border around the whole board for a cleaner look
-        g2d.setColor(Color.BLACK);
-        g2d.setStroke(new BasicStroke(2));
-        g2d.drawRect(startX, startY, boardPixelSize, boardPixelSize);
-
-        // --- Draw Dragged Piece (On Top) ---
-        if (draggedPiece != null) {
-            // Draw at mouse position (adjusted by offset)
-            drawPiece(g2d, draggedPiece, dragX - dragOffsetX, dragY - dragOffsetY);
-        }
-
-        // --- DRAW RESERVES (Only in Crazyhouse) ---
-        if (gameRules instanceof CrazyhouseVariant) {
-            drawReserves(g2d);
-        }
-
-        // --- DRAW SCORES (Chaturaji) ---
-        drawScores(g2d);
-
-        // --- DRAW CLOCK ---
-        drawClocks(g2d);
     }
 
     /**
@@ -992,22 +1056,20 @@ public class BoardPanel extends JPanel {
             exitGameReview();
         }
 
-        if (gameRules instanceof ChaturajiVariant) {
+        // Create Timeout Move (We create a dummy piece just to carry the Color info)
+        Piece dummy = new King(loser, -1, -1);
 
-            // Create Timeout Move (We create a dummy piece just to carry the Color info)
-            Piece dummy = new King(loser, -1, -1);
+        // Create a move with -1 coordinates and TIMEOUT type
+        Move timeoutMove = new Move(
+                dummy, -1, -1, -1, -1,
+                MoveType.TIMEOUT,null, false, null
+        );
 
-            // Create a move with -1 coordinates and TIMEOUT type
-            Move timeoutMove = new Move(
-                    dummy, -1, -1, -1, -1,
-                    MoveType.TIMEOUT,null, false, null
-            );
+        // Use finalizeTurn to handle history, saving, and UI updates
+        finalizeTurn(timeoutMove);
 
-            // Use finalizeTurn to handle history, saving, and UI updates
-            finalizeTurn(timeoutMove);
-
-        } else {
-            // Standard / Duck / Fog -> Immediate Loss
+        if (!(gameRules instanceof ChaturajiVariant)) {
+            // Standard / Duck / Fog / Crazy -> Immediate Loss
             PieceColor winner = loser.next(); // Simplified (In 2 player)
             showGameOverDialog("TIMEOUT!\n" + loser + " ran out of time.\n" + winner + " wins!");
         }
