@@ -34,6 +34,13 @@ public class BoardPanel extends JPanel {
     private ChessClock chessClock;
     private final Timer gameLoopTimer; // Swing Timer for repainting
 
+    // --- In-Game Review State ---
+    private boolean isInGameReview = false;
+    private List<Move> liveMoveHistoryBackup = null; // Snapshot of real moves
+    private int reviewIndex = 0;
+    private PieceColor livePerspectiveSnapshot = null; // To keep the board from spinning
+    private PieceColor liveCurrentPlayerSnapshot = null; // Snapshot of real current player
+
     // --- Drag & Drop State ---
     private Piece draggedPiece = null;
     private int dragX, dragY; // Current pixel coordinates of the mouse
@@ -72,11 +79,13 @@ public class BoardPanel extends JPanel {
 
 
     /**
-     * Constructor of BoardPanel which creates a new BoardPanel
+     * Constructor of BoardPanel which creates a new BoardPanel.
      */
     public BoardPanel() {
         this.board = new Board();
         setOpaque(false);
+        setFocusable(true); // enable keyboard
+
         loadResources();
 
         // Default startup
@@ -91,14 +100,29 @@ public class BoardPanel extends JPanel {
         addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyPressed(java.awt.event.KeyEvent e) {
-                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_RIGHT) {
-                    replayStep(1);
-                } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_LEFT) {
-                    replayStep(-1);
+                int key = e.getKeyCode();
+
+                // History Panel Replay (Loaded from file)
+                if (isReplayMode) {
+                    if (key == java.awt.event.KeyEvent.VK_RIGHT) replayStep(1);
+                    else if (key == java.awt.event.KeyEvent.VK_LEFT) replayStep(-1);
+                }
+                // In-Game Review (Live Game)
+                else {
+                    if (key == java.awt.event.KeyEvent.VK_LEFT) {
+                        if (!board.getMoveHistory().isEmpty()) {
+                            stepInGameReview(-1);
+                        }
+                    }
+                    else if (key == java.awt.event.KeyEvent.VK_RIGHT) {
+                        // Only allow right if already reviewing
+                        if (isInGameReview) {
+                            stepInGameReview(1);
+                        }
+                    }
                 }
             }
         });
-
         // Create a timer that ticks every 100ms to update clocks
         gameLoopTimer = new Timer(100, e -> updateGameLoop());
     }
@@ -110,6 +134,10 @@ public class BoardPanel extends JPanel {
     public void setupGame(String mode, TimeSettings timeSettings) {
         this.currentModeName = mode;
         this.isReplayMode = false;
+        isInGameReview = false;
+        liveMoveHistoryBackup = null;
+        livePerspectiveSnapshot = null;
+        liveCurrentPlayerSnapshot = null;
 
         // Reset Model
         board.resetBoard();
@@ -182,6 +210,8 @@ public class BoardPanel extends JPanel {
         currentLegalMoves = null;
         selectedPiece = null;
         selectedLegalMoves = null;
+
+        requestFocusInWindow(); // enable keyboard
 
         // Redraw
         repaint();
@@ -305,7 +335,7 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * Sets the theme to the chosen one
+     * Sets the theme to the chosen one.
      * @param theme chosen theme
      */
     public void setTheme(BoardTheme theme) {
@@ -314,8 +344,8 @@ public class BoardPanel extends JPanel {
     }
 
     /**
-     * This method is responsible for drawing the board with its pieces
-     * @param g Graphics (drawing onto this)
+     * This method is responsible for drawing the board with its pieces.
+     * @param g Graphics (drawing on this)
      */
     @Override
     protected void paintComponent(Graphics g) {
@@ -550,6 +580,42 @@ public class BoardPanel extends JPanel {
                     g2d.setStroke(originalStroke);
                 }
             }
+        }
+
+        // --- REVIEW INDICATOR ---
+        if (isInGameReview) {
+            String msg = "REVIEWING: " + reviewIndex + "/" + liveMoveHistoryBackup.size();
+
+            // Setup Font
+            g.setFont(new Font("Arial", Font.BOLD, 20));
+            FontMetrics fm = g.getFontMetrics();
+            int w = fm.stringWidth(msg);
+            int h = fm.getHeight(); // Roughly matches clock height
+
+            // Calculate Y (Match Top Clock Baseline)
+            int padding = 10;
+            int scoreOffset = (gameRules instanceof ChaturajiVariant) ? 25 : 0;
+            int reserveOffset = (gameRules instanceof CrazyhouseVariant) ? 80 : 0;
+
+            int y = startY - padding - scoreOffset - reserveOffset;
+
+            // Calculate X (Left of the Top Clock)
+            int boardCenterX = startX + (squareSize * 4);
+
+            // "00:00" in Monospaced 20 is approx 60px wide.
+            // Half width (30) + Bubble Padding (5) + Gap (20) = ~55px offset from center
+            int clockOffset = 55;
+
+            int x = Math.min(startX, boardCenterX - clockOffset - w);
+
+            // Draw Background Bubble
+            g.setColor(new Color(50, 50, 50, 200));
+            // Match the clock's fillRoundRect style: (x-5, y-h+5, w+10, h, 10, 10)
+            g.fillRoundRect(x - 5, y - h + 5, w + 10, h, 10, 10);
+
+            // Draw Text
+            g.setColor(Color.WHITE);
+            g.drawString(msg, x, y);
         }
 
         // Draw a border around the whole board for a cleaner look
@@ -897,10 +963,19 @@ public class BoardPanel extends JPanel {
         // Update Time
         chessClock.tick();
 
-        // Check Timeout
-        PieceColor activePlayer = board.getCurrentPlayer();
-        if (chessClock.isFlagFallen(activePlayer)) {
-            handleTimeout(activePlayer);
+        // --- Check Timeout ---
+        PieceColor playerToCheck;
+
+        if (isInGameReview) {
+            // In review, the board is in the past, so we MUST use the snapshot
+            playerToCheck = liveCurrentPlayerSnapshot;
+        } else {
+            // In live game, the board is accurate
+            playerToCheck = board.getCurrentPlayer();
+        }
+
+        if (chessClock.isFlagFallen(playerToCheck)) {
+            handleTimeout(playerToCheck);
         }
 
         // Redraw (to show updated digits)
@@ -912,19 +987,25 @@ public class BoardPanel extends JPanel {
      * @param loser color of the loser player
      */
     private void handleTimeout(PieceColor loser) {
-        if (gameRules instanceof ChaturajiVariant) {
-            System.out.println("TIMEOUT! " + loser + " dies.");
-            board.killPlayer(loser);
+        // SAFETY: If we are reviewing, force exit to Live State first!
+        if (isInGameReview) {
+            exitGameReview();
+        }
 
-            // If 3 kings dead -> Game Over
-            if (board.getAlivePlayerCount() <= 1) {
-                showGameOverDialog("GAME OVER!\nTime ran out.");
-            } else {
-                // Switch to next alive player
-                board.switchTurn();
-                viewPerspective = board.getCurrentPlayer();
-                chessClock.start(board.getCurrentPlayer()); // Start next clock
-            }
+        if (gameRules instanceof ChaturajiVariant) {
+
+            // Create Timeout Move (We create a dummy piece just to carry the Color info)
+            Piece dummy = new King(loser, -1, -1);
+
+            // Create a move with -1 coordinates and TIMEOUT type
+            Move timeoutMove = new Move(
+                    dummy, -1, -1, -1, -1,
+                    MoveType.TIMEOUT,null, false, null
+            );
+
+            // Use finalizeTurn to handle history, saving, and UI updates
+            finalizeTurn(timeoutMove);
+
         } else {
             // Standard / Duck / Fog -> Immediate Loss
             PieceColor winner = loser.next(); // Simplified (In 2 player)
@@ -1000,7 +1081,7 @@ public class BoardPanel extends JPanel {
         int padding = 10;
 
         // Active Player Highlight
-        if (color == board.getCurrentPlayer()) {
+        if (color == viewPerspective) {
             g2d.setColor(new Color(255, 255, 255)); // Bright White for active
         } else {
             g2d.setColor(Color.LIGHT_GRAY);       // Gray for waiting
@@ -1054,6 +1135,8 @@ public class BoardPanel extends JPanel {
      * @param move move that was made
      */
     private void finalizeTurn(Move move) {
+        // Ensure we are not in review mode when finalizing a real move
+        if (isInGameReview) exitGameReview();
 
         // Run Logic
         executeMoveLogic(move);
@@ -1166,9 +1249,9 @@ public class BoardPanel extends JPanel {
         // Construct the winner string
         StringBuilder winnerMsg = new StringBuilder();
         if (winners.size() == 1) {
-            winnerMsg.append("\nWINNER: ").append(winners.getFirst());
+            winnerMsg.append("WINNER: ").append(winners.getFirst());
         } else {
-            winnerMsg.append("\nWINNERS: ");
+            winnerMsg.append("WINNERS: ");
             for (int i = 0; i < winners.size(); i++) {
                 winnerMsg.append(winners.get(i));
                 if (i < winners.size() - 1) {
@@ -1177,7 +1260,7 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        sb.append(winnerMsg).append("!");
+        sb.append("\n").append(winnerMsg).append("!");
 
         clearSelections();
 
@@ -1377,12 +1460,21 @@ public class BoardPanel extends JPanel {
      * @return converted move that can be executed
      */
     private Move convertSavedMove(SavedMove saved) {
+        MoveType type = MoveType.valueOf(saved.type());
+
+        // --- TIMEOUT LOGIC (NEW) ---
+        if (type == MoveType.TIMEOUT) {
+            // We need to know WHO timed out (In replay, we rely on the board's current turn to assign the color)
+            PieceColor color = board.getCurrentPlayer();
+            Piece dummy = new King(color, -1, -1);
+
+            return new Move(dummy, -1, -1, -1, -1, type, null, false, null);
+        }
+
         int sr = saved.sr();
         int sc = saved.sc();
         int er = saved.er();
         int ec = saved.ec();
-
-        MoveType type = MoveType.valueOf(saved.type());
 
         Piece piece;
         if (type == MoveType.DROP) {
@@ -1455,7 +1547,9 @@ public class BoardPanel extends JPanel {
             viewPerspective = board.getCurrentPlayer();
 
             // Switch turn for Chess Clock
-            if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+            if (chessClock != null && !isReplayMode && !isInGameReview) {
+                chessClock.switchTurn(board.getCurrentPlayer());
+            }
 
             return;
         }
@@ -1468,7 +1562,9 @@ public class BoardPanel extends JPanel {
                 viewPerspective = board.getCurrentPlayer();
 
                 // Switch turn for Chess Clock
-                if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+                if (chessClock != null && !isReplayMode && !isInGameReview) {
+                    chessClock.switchTurn(board.getCurrentPlayer());
+                }
             } else {
                 board.setWaitingForDuck(true);
             }
@@ -1480,7 +1576,9 @@ public class BoardPanel extends JPanel {
                 viewPerspective = board.getCurrentPlayer();
 
                 // Switch turn for Chess Clock
-                if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+                if (chessClock != null && !isReplayMode && !isInGameReview) {
+                    chessClock.switchTurn(board.getCurrentPlayer());
+                }
             }
         }
         // Classical / Crazyhouse
@@ -1489,7 +1587,125 @@ public class BoardPanel extends JPanel {
             viewPerspective = board.getCurrentPlayer();
 
             // Switch turn for Chess Clock
-            if (chessClock != null && !isReplayMode) chessClock.switchTurn(board.getCurrentPlayer());
+            if (chessClock != null && !isReplayMode && !isInGameReview) {
+                chessClock.switchTurn(board.getCurrentPlayer());
+            }
+        }
+    }
+
+
+    // --- IN-GAME REVIEW LOGIC ---
+
+    /**
+     * Handles entering into in-game replay mode to review recent moves.
+     */
+    private void enterGameReview() {
+        if (isInGameReview || board.getMoveHistory().isEmpty()) return;
+
+        // Snapshot the Live State (We copy the stack to a list so we can iterate it)
+        liveMoveHistoryBackup = new ArrayList<>(board.getMoveHistory());
+        livePerspectiveSnapshot = viewPerspective; // Save current rotation
+        liveCurrentPlayerSnapshot = board.getCurrentPlayer(); // save current real player
+
+        isInGameReview = true;
+        reviewIndex = liveMoveHistoryBackup.size(); // Start at the end
+    }
+
+    /**
+     * Handles exiting from in-game replay mode.
+     */
+    private void exitGameReview() {
+        if (!isInGameReview) return;
+
+        // Restore Live State (board and replay ALL moves from the backup)
+        board.resetBoard();
+
+        // We need to ensure the base setup is correct
+        restoreBaseSetup();
+
+        for (Move m : liveMoveHistoryBackup) {
+            executeMoveLogic(m);
+        }
+
+        // Restore Visuals
+        viewPerspective = livePerspectiveSnapshot;
+
+        // Clear Snapshot
+        liveMoveHistoryBackup = null;
+        isInGameReview = false;
+        livePerspectiveSnapshot = null;
+        liveCurrentPlayerSnapshot = null;
+
+        // Update Fog for Live State
+        if (gameRules instanceof FogOfWarVariant) {
+            calculateVisibility();
+        }
+        repaint();
+    }
+
+    /**
+     * Handles user's request of moving forward or backward in in-game replay.
+     * @param direction forward (+1) or backward (-1)
+     */
+    private void stepInGameReview(int direction) {
+        if (!isInGameReview) enterGameReview();
+
+        int newIndex = reviewIndex + direction;
+
+        // Bounds Check
+        if (newIndex < 0) return; // Can't go before start
+        if (newIndex > liveMoveHistoryBackup.size()) return;
+
+        // If we go back to the very end, exit review mode (return to live game)
+        if (newIndex == liveMoveHistoryBackup.size()) {
+            exitGameReview();
+            return;
+        }
+
+        reviewIndex = newIndex;
+
+        // --- RECONSTRUCT BOARD AT reviewIndex ---
+        board.resetBoard();
+        restoreBaseSetup();
+
+        for (int i = 0; i < reviewIndex; i++) {
+            Move m = liveMoveHistoryBackup.get(i);
+            executeMoveLogic(m);
+        }
+
+        // Restore perspective
+        this.viewPerspective = livePerspectiveSnapshot;
+
+        // Update Fog for the historic state
+        if (gameRules instanceof FogOfWarVariant) {
+            calculateVisibility();
+        }
+
+        repaint();
+    }
+
+    /**
+     * Helper to apply the initial setup after a reset.
+     */
+    private void restoreBaseSetup() {
+        if (gameRules instanceof ChaturajiVariant) {
+            // Re-call the setup logic we have (setupChaturajiBoard() calls resetBoard() internally, so it's safe)
+            setupChaturajiBoard();
+
+            // Re-set the starting player to RED because resetBoard sets WHITE
+            board.setCurrentPlayer(PieceColor.RED);
+        } else {
+            board.addStandardPieces();
+
+            if (gameRules instanceof DuckChessVariant) {
+                // Place duck on board (if history replayed moves the duck, it will be moved from default)
+                board.placePiece(new Duck(3, 3), 3, 3);
+            }
+        }
+
+        // Restore modes
+        if (gameRules instanceof CrazyhouseVariant) {
+            board.setCrazyhouseMode(true);
         }
     }
 
@@ -1505,9 +1721,13 @@ public class BoardPanel extends JPanel {
          */
         @Override
         public void mousePressed(MouseEvent e) {
+            requestFocusInWindow();// enable mouse
 
-            // Disabled after end of game
-            if (isGameOver) return;
+            // Block input if Game Over OR Reviewing the past
+            if (isGameOver && !isInGameReview) return;
+
+            // Block moves if reviewing history
+            if (isInGameReview) return;
 
             Point coords = getBoardCoordinates(e.getX(), e.getY());
 

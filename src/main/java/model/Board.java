@@ -274,7 +274,7 @@ public class Board {
         return switch (piece.getType()) {
             case PAWN -> new Pawn(PieceColor.GREY, piece.getRow(), piece.getCol());
             case KING -> new King(PieceColor.GREY, piece.getRow(), piece.getCol());
-            case BOAT -> new Rook(PieceColor.GREY, piece.getRow(), piece.getCol());
+            case BOAT -> new Boat(PieceColor.GREY, piece.getRow(), piece.getCol());
             case KNIGHT -> new Knight(PieceColor.GREY, piece.getRow(), piece.getCol());
             case BISHOP -> new Bishop(PieceColor.GREY, piece.getRow(), piece.getCol());
             default -> null;
@@ -332,6 +332,14 @@ public class Board {
      * @param move move to execute
      */
     public void executeMove(Move move) {
+
+        // Handle TIMEOUT
+        if (move.type() == MoveType.TIMEOUT) {
+            // The piece in the move object tells us WHO ran out of time
+            killPlayer(move.piece().getColor());
+            moveHistory.push(move);
+            return;
+        }
         
         // Handle DROP (Crazyhouse)
         if (move.type() == MoveType.DROP) {

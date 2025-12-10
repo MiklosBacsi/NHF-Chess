@@ -10,5 +10,6 @@ public enum MoveType {
     EN_PASSANT,
     PROMOTION,
     DUCK,
-    DROP
+    DROP,
+    TIMEOUT
 }
