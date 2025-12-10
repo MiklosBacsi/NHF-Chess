@@ -355,6 +355,22 @@ public class Board {
             return;
         }
 
+        // Handle RESIGN
+        if (move.type() == MoveType.RESIGN) {
+            killPlayer(move.piece().getColor());
+            moveHistory.push(move);
+            return;
+        }
+
+        // Handle DRAW
+        if (move.type() == MoveType.DRAW) {
+            // Kill everyone (Visual effect for "Game Over / Draw")
+            killPlayer(PieceColor.WHITE);
+            killPlayer(PieceColor.BLACK);
+            moveHistory.push(move);
+            return;
+        }
+
         // Remove piece from start
         squares[move.startRow()][move.startCol()] = null;
 

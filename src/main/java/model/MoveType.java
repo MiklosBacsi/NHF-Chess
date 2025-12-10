@@ -11,5 +11,7 @@ public enum MoveType {
     PROMOTION,
     DUCK,
     DROP,
-    TIMEOUT
+    TIMEOUT,
+    RESIGN,
+    DRAW
 }

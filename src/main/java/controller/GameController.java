@@ -88,6 +88,8 @@ public class GameController {
             <h3>Version 1.0</h3>
             <p>An amazing program that allows you to play chess variants locally with your friends, your cat (or with yourself),
             and you can analyze the matches manually with the help of annotations!</p>
+            <p>The Game History offers you a memorable experience as you can replay you previous matches (with the arrows),
+            and you can even see the game from the perspective of other players!</p>
             <br><b>Supported Variants:</b><br>
             Classical • Fog of War • Duck Chess<br>
             Crazyhouse • Chaturaji (4-player)<br><br>
@@ -167,7 +169,8 @@ public class GameController {
     public String getCrazyhouseRules() {
         return "<h2>Crazyhouse</h2><p>When capturing a piece of the enemy, it moves into our reserve. " +
             "Instead of making a move, you can choose to take a piece out of the reserve, " +
-            "and drop it back onto the board, in an empty square, but now as your piece.</p>";
+            "and drop it back onto the board, in an empty square, but now as your piece.</p>" +
+            "<p>The only restriction is that pawns cannot be dropped to the first and last rank.</p>";
     }
 
     /**
@@ -187,8 +190,8 @@ public class GameController {
                 "<li>3 points: capturing a king or a knight</li>" +
                 "<li>5 points: capturing a bishop or a sail boat; simultaneously checking 3 kings</li>" +
             "</ul></p>" +
-            "<p>The game (automatically) ends, if 3 kings are captured, or if it is possible for only one player to win (calculated from points).<br>" +
-            "The player with the most points wins, even if his king has been captured, or he resigned.</p>";
+            "<p>The game (automatically) ends, if 3 kings are captured, or if it is possible for only one player to win (calculated from points).</p>" +
+            "<p>The player with the most points wins, even if his king has been captured, or he resigned.</p>";
     }
 
     /**

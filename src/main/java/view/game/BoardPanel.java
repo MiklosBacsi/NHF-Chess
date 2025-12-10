@@ -30,6 +30,8 @@ public class BoardPanel extends JPanel {
     private final Board board;
     private final Map<String, BufferedImage> pieceImages = new HashMap<>();
     private boolean isGameOver = false;
+    private boolean drawOfferPending = false; // True if current player clicked Draw
+
     // Clock State
     private ChessClock chessClock;
     private final Timer gameLoopTimer; // Swing Timer for repainting
@@ -66,6 +68,9 @@ public class BoardPanel extends JPanel {
     private final PieceType[] RESERVE_ORDER = {
             PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN
     };
+    // UI Buttons
+    private JButton btnResign;
+    private JButton btnDraw;
     // --- For Game History ---
     private String currentModeName = "Classical";
     private boolean isReplayMode = false;
@@ -88,7 +93,7 @@ public class BoardPanel extends JPanel {
         this.board = new Board();
         setOpaque(false);
         setFocusable(true); // enable keyboard
-        // setLayout(null);
+        setLayout(null); // Absolute layout for dynamic positioning
 
         loadResources();
 
@@ -102,10 +107,24 @@ public class BoardPanel extends JPanel {
         switchPerspectiveBtn.setForeground(Color.WHITE);
         switchPerspectiveBtn.setBorder(BorderFactory.createLineBorder(Color.GRAY));
         switchPerspectiveBtn.setVisible(false); // Hidden by default
-
         switchPerspectiveBtn.addActionListener(e -> cycleReplayPerspective());
-
         add(switchPerspectiveBtn);
+
+        // --- RESIGN BUTTON ---
+        btnResign = new JButton("Resign");
+        btnResign.setFocusable(false);
+        btnResign.setBackground(new Color(200, 60, 60));
+        btnResign.setForeground(Color.WHITE);
+        btnResign.addActionListener(e -> onResignClicked());
+        add(btnResign);
+
+        // --- DRAW BUTTON ---
+        btnDraw = new JButton("Draw");
+        btnDraw.setFocusable(false);
+        btnDraw.setBackground(new Color(100, 100, 150));
+        btnDraw.setForeground(Color.WHITE);
+        btnDraw.addActionListener(e -> onDrawClicked());
+        add(btnDraw);
 
         // Initialize Mouse Listeners
         MouseAdapter mouseHandler = new DragController();
@@ -226,6 +245,9 @@ public class BoardPanel extends JPanel {
         currentLegalMoves = null;
         selectedPiece = null;
         selectedLegalMoves = null;
+        drawOfferPending = false;
+        btnDraw.setText("Draw");
+        btnDraw.setEnabled(true);
 
         requestFocusInWindow(); // enable keyboard
 
@@ -410,6 +432,53 @@ public class BoardPanel extends JPanel {
     }
 
     /**
+     * Helper to implement resign dialog.
+     */
+    private void onResignClicked() {
+        if (isGameOver || isReplayMode || isInGameReview) return;
+
+        // Confirm
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Are you sure you want to resign?", "Resign", JOptionPane.YES_NO_OPTION);
+
+        if (choice == JOptionPane.YES_OPTION) {
+            if (!(gameRules instanceof ChaturajiVariant)) {
+                isGameOver = true; // Lock the Game
+            }
+
+            PieceColor me = board.getCurrentPlayer();
+
+            // Create Resign Move
+            Piece dummy = new King(me, -1, -1);
+            Move m = new Move(dummy, -1, -1, -1, -1,
+                    MoveType.RESIGN, null, false, null);
+            finalizeTurn(m);
+
+            if (!(gameRules instanceof ChaturajiVariant)) {
+                PieceColor winner = board.getCurrentPlayer();      // Current player
+                PieceColor resigner = board.getCurrentPlayer().next(); // Previous player
+
+                showGameOverDialog("GAME OVER! " + resigner + " resigned, so " + winner + " wins!");
+            }
+        }
+    }
+
+    /**
+     * Helper to register draw offer.
+     */
+    private void onDrawClicked() {
+        if (isGameOver || isReplayMode || isInGameReview) return;
+
+        // Just set the flag. Logic happens after turn switch.
+        drawOfferPending = true;
+        btnDraw.setText("Offer Sent");
+        btnDraw.setEnabled(false); // Disable to prevent spamming
+
+        // Regain focus for board interaction
+        requestFocusInWindow();
+    }
+
+    /**
      * This method is responsible for drawing the board with its pieces.
      * @param g Graphics (drawing on this)
      */
@@ -450,6 +519,32 @@ public class BoardPanel extends JPanel {
             if (switchPerspectiveBtn.isVisible()) {
                 switchPerspectiveBtn.setVisible(false);
             }
+        }
+
+        // --- BUTTON VISIBILITY & POSITION ---
+        boolean buttonsVisible = !(isReplayMode || isInGameReview) && !isGameOver;
+
+        if (buttonsVisible) {
+            int crazyOffset = (gameRules instanceof CrazyhouseVariant) ? 78 : 0;
+
+            int btnWidth = 100;
+            int btnHeight = 30;
+            int y = startY + (squareSize * 8) + 5 + crazyOffset;
+
+            // Resign (Right Edge)
+            btnResign.setBounds(startX + (squareSize * 8) - btnWidth, y, btnWidth, btnHeight);
+            btnResign.setVisible(true);
+
+            // Draw (Left Edge) - Hidden in Chaturaji
+            if (gameRules instanceof ChaturajiVariant) {
+                btnDraw.setVisible(false);
+            } else {
+                btnDraw.setBounds(startX, y, btnWidth, btnHeight);
+                btnDraw.setVisible(true);
+            }
+        } else {
+            btnResign.setVisible(false);
+            btnDraw.setVisible(false);
         }
 
         // --- RESPONSIVE LAYOUT ---
@@ -1362,13 +1457,69 @@ public class BoardPanel extends JPanel {
 
                 calculateVisibility();
                 repaint();
+
+                // Handle Draw Offer
+                if (drawOfferPending) {
+                    drawOfferPending = handleDrawLogicOffer();
+                }
             });
         } else if (gameRules instanceof FogOfWarVariant) {
             // In Replay, just recalculate visibility without dialog
             calculateVisibility();
         }
 
+        // --- DRAW OFFER LOGIC ---
+        // After moving the Duck
+        if (drawOfferPending && !(gameRules instanceof DuckChessVariant && move.type() != MoveType.DUCK)) {
+            drawOfferPending = handleDrawLogicOffer();
+        }
+
+        // Reset Flag
+        btnDraw.setText("Draw");
+        btnDraw.setEnabled(true);
+
         clearSelections();
+    }
+
+    /**
+     * Helper to open draw offer dialog whenever needed.
+     * @return whether the draw request is still PENDING
+     */
+    private  boolean handleDrawLogicOffer() {
+        // Check this AFTER switching turn (so it's the opponent's turn now)
+        if (drawOfferPending && !isGameOver && !isBlindMode) {
+
+            // Show Dialog
+            PieceColor offerer = board.getCurrentPlayer().next(); // Previous player
+            PieceColor responder = board.getCurrentPlayer();      // Current player
+
+            // Use invokeLater so the board repaints (shows the move) before dialog
+            SwingUtilities.invokeLater(() -> {
+                int response = JOptionPane.showConfirmDialog(this,
+                        offerer + " offers a draw.\nDo you accept?",
+                        "Draw Offer", JOptionPane.YES_NO_OPTION);
+
+                if (response == JOptionPane.YES_OPTION) {
+                    isGameOver = true;
+
+                    // Create Draw Move
+                    Piece dummy = new King(offerer, -1, -1);
+                    Move drawMove = new Move(dummy, -1, -1, -1, -1, MoveType.DRAW, null, false, null);
+
+                    // Execute Draw (Recursive call, but safe because it hits Game Over logic immediately)
+                    finalizeTurn(drawMove);
+
+                    if (!(gameRules instanceof ChaturajiVariant)) {
+                        // Standard / Duck / Fog / Crazy -> End game
+                        isGameOver = true;
+
+                        showGameOverDialog("DRAW!\n" + offerer + " offered a draw and " + responder + " accepted it!");
+                    }
+                }
+            });
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -1640,6 +1791,14 @@ public class BoardPanel extends JPanel {
      */
     private Move convertSavedMove(SavedMove saved) {
         MoveType type = MoveType.valueOf(saved.type());
+
+        // --- RESIGN / DRAW ---
+        if (type == MoveType.RESIGN || type == MoveType.DRAW) {
+            PieceColor color = board.getCurrentPlayer();
+            // Create dummy piece
+            Piece dummy = new King(color, -1, -1);
+            return new Move(dummy, -1, -1, -1, -1, type, null, false, null);
+        }
 
         // --- TIMEOUT LOGIC (NEW) ---
         if (type == MoveType.TIMEOUT) {
