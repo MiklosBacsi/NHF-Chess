@@ -681,114 +681,112 @@ public class BoardPanel extends JPanel {
             }
         }
 
-
-        // Determine color of square
-        boolean isLightSquare = (row + col) % 2 == 0;
-        if (isLightSquare) {
-            g2d.setColor(currentTheme.getLight());
-        } else {
-            g2d.setColor(currentTheme.getDark());
-        }
-
-        // Draw the square (Background)
-        g2d.fillRect(x, y, squareSize, squareSize);
-
-        // --- DRAW COORDINATES ---
-        int fontSize = Math.max(12, squareSize / 5);
-        g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
-
-        // Text Color: Inverse of the square color
-        if (isLightSquare) g2d.setColor(currentTheme.getDark());
-        else g2d.setColor(currentTheme.getLight());
-
-        int padding = fontSize / 4;
-
-        // Determine if board is "Upright" (Red/Yellow/White/Black) or "Sideways" (Blue/Green)
-        boolean isUpright = (viewPerspective == PieceColor.RED ||
-                viewPerspective == PieceColor.YELLOW ||
-                viewPerspective == PieceColor.WHITE ||
-                viewPerspective == PieceColor.BLACK);
-
-        // LEFT EDGE (Visual Vertical Axis)
-        if (visualCol == 0) {
-            String label;
-            if (isUpright) {
-                // Standard: Vertical axis shows Ranks (1-8)
-                label = String.valueOf(8 - row);
+        if (isVisible) {
+            // Determine color of square
+            boolean isLightSquare = (row + col) % 2 == 0;
+            if (isLightSquare) {
+                g2d.setColor(currentTheme.getLight());
             } else {
-                // Sideways: Vertical axis shows Files (a-h)
-                label = String.valueOf((char)('a' + col));
-            }
-            g2d.drawString(label, x + padding, y + fontSize);
-        }
-
-        // BOTTOM EDGE (Visual Horizontal Axis)
-        if (visualRow == 7) {
-            String label;
-            if (isUpright) {
-                // Standard: Horizontal axis shows Files (a-h)
-                label = String.valueOf((char)('a' + col));
-            } else {
-                // Sideways: Horizontal axis shows Ranks (1-8)
-                label = String.valueOf(8 - row);
+                g2d.setColor(currentTheme.getDark());
             }
 
-            int textWidth = g2d.getFontMetrics().stringWidth(label);
-            g2d.drawString(label, x + squareSize - textWidth - (padding * 3 / 4), y + squareSize - padding);
+            // Draw the square (Background)
+            g2d.fillRect(x, y, squareSize, squareSize);
+
+            // --- DRAW COORDINATES ---
+            int fontSize = Math.max(12, squareSize / 5);
+            g2d.setFont(new Font("Arial", Font.BOLD, fontSize));
+
+            // Text Color: Inverse of the square color
+            if (isLightSquare) g2d.setColor(currentTheme.getDark());
+            else g2d.setColor(currentTheme.getLight());
+
+            int padding = fontSize / 4;
+
+            // Determine if board is "Upright" (Red/Yellow/White/Black) or "Sideways" (Blue/Green)
+            boolean isUpright = (viewPerspective == PieceColor.RED ||
+                    viewPerspective == PieceColor.YELLOW ||
+                    viewPerspective == PieceColor.WHITE ||
+                    viewPerspective == PieceColor.BLACK);
+
+            // LEFT EDGE (Visual Vertical Axis)
+            if (visualCol == 0) {
+                String label;
+                if (isUpright) {
+                    // Standard: Vertical axis shows Ranks (1-8)
+                    label = String.valueOf(8 - row);
+                } else {
+                    // Sideways: Vertical axis shows Files (a-h)
+                    label = String.valueOf((char) ('a' + col));
+                }
+                g2d.drawString(label, x + padding, y + fontSize);
+            }
+
+            // BOTTOM EDGE (Visual Horizontal Axis)
+            if (visualRow == 7) {
+                String label;
+                if (isUpright) {
+                    // Standard: Horizontal axis shows Files (a-h)
+                    label = String.valueOf((char) ('a' + col));
+                } else {
+                    // Sideways: Horizontal axis shows Ranks (1-8)
+                    label = String.valueOf(8 - row);
+                }
+
+                int textWidth = g2d.getFontMetrics().stringWidth(label);
+                g2d.drawString(label, x + squareSize - textWidth - (padding * 3 / 4), y + squareSize - padding);
+            }
+
+
+            // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
+
+            // Draw Last Move Highlights (Recent Moves) (only draw if NOT dragging, and there is a history)
+            if (draggedPiece == null) {
+                // Loop through the list of recent moves
+                for (Move move : recentMoves) {
+                    boolean isStart = (move.startRow() == row && move.startCol() == col);
+                    boolean isEnd = (move.endRow() == row && move.endCol() == col);
+
+                    if (isStart || isEnd) {
+                        g2d.setColor(moveHighlightColor);
+                        g2d.fillRect(x, y, squareSize, squareSize);
+                        // We don't break here, because we can draw multiple times on the same square
+                    }
+                }
+            }
+
+            // Draw Source Highlight (if it's the dragged piece or selected piece)
+            if (activePiece != null && activePiece.getRow() == row && activePiece.getCol() == col) {
+                g2d.setColor(moveHighlightColor);
+                g2d.fillRect(x, y, squareSize, squareSize);
+            }
+
+            // Draw Target Highlight (White)
+            if (draggedPiece != null && hoverSquare != null && hoverSquare.y == row && hoverSquare.x == col) {
+                g2d.setColor(targetHighlightColor);
+                g2d.fillRect(x, y, squareSize, squareSize);
+            }
+
+            // --- Check Highlight (Red) ---
+            // If White is in Check AND this is the White King's square -> Paint Red
+            if (whiteInCheck && whiteKing != null && whiteKing.getRow() == row && whiteKing.getCol() == col) {
+                g2d.setColor(checkHighlightColor);
+                g2d.fillRect(x, y, squareSize, squareSize);
+            }
+            // If Black is in Check AND this is the Black King's square -> Paint Red
+            if (blackInCheck && blackKing != null && blackKing.getRow() == row && blackKing.getCol() == col) {
+                g2d.setColor(checkHighlightColor);
+                g2d.fillRect(x, y, squareSize, squareSize);
+            }
         }
-
-
         // IF NOT VISIBLE -> DRAW FOG AND SKIP CONTENT
-        if (!isVisible) {
+        else {
             // Use the GREY theme colors to represent fog
             if ((row + col) % 2 == 0) {
                 g2d.setColor(BoardTheme.GREY.getLight());
             } else {
                 g2d.setColor(BoardTheme.GREY.getDark());
             }
-            g2d.fillRect(x, y, squareSize, squareSize);
-            return; // STOP HERE for this square (Don't draw pieces/highlights)
-        }
-
-
-        // --- Highlights/Hints logic uses MODEL coords to check, but draws at VISUAL coords (x,y) ---
-
-        // Draw Last Move Highlights (Recent Moves) (only draw if NOT dragging, and there is a history)
-        if (draggedPiece == null) {
-            // Loop through the list of recent moves
-            for (Move move : recentMoves) {
-                boolean isStart = (move.startRow() == row && move.startCol() == col);
-                boolean isEnd = (move.endRow() == row && move.endCol() == col);
-
-                if (isStart || isEnd) {
-                    g2d.setColor(moveHighlightColor);
-                    g2d.fillRect(x, y, squareSize, squareSize);
-                    // We don't break here, because we can draw multiple times on the same square
-                }
-            }
-        }
-
-        // Draw Source Highlight (if it's the dragged piece or selected piece)
-        if (activePiece != null && activePiece.getRow() == row && activePiece.getCol() == col) {
-            g2d.setColor(moveHighlightColor);
-            g2d.fillRect(x, y, squareSize, squareSize);
-        }
-
-        // Draw Target Highlight (White)
-        if (draggedPiece != null && hoverSquare != null && hoverSquare.y == row && hoverSquare.x == col) {
-            g2d.setColor(targetHighlightColor);
-            g2d.fillRect(x, y, squareSize, squareSize);
-        }
-
-        // --- Check Highlight (Red) ---
-        // If White is in Check AND this is the White King's square -> Paint Red
-        if (whiteInCheck && whiteKing != null && whiteKing.getRow() == row && whiteKing.getCol() == col) {
-            g2d.setColor(checkHighlightColor);
-            g2d.fillRect(x, y, squareSize, squareSize);
-        }
-        // If Black is in Check AND this is the Black King's square -> Paint Red
-        if (blackInCheck && blackKing != null && blackKing.getRow() == row && blackKing.getCol() == col) {
-            g2d.setColor(checkHighlightColor);
             g2d.fillRect(x, y, squareSize, squareSize);
         }
 
@@ -801,10 +799,12 @@ public class BoardPanel extends JPanel {
             }
         }
 
-        // --- Draw Piece (if it's not being dragged) ---
-        Piece piece = board.getPiece(row, col);
-        if (piece != null && piece != draggedPiece) {
-            drawPiece(g2d, piece, x, y);
+        // --- Draw Piece (if it's visible and not being dragged) ---
+        if (isVisible) {
+            Piece piece = board.getPiece(row, col);
+            if (piece != null && piece != draggedPiece) {
+                drawPiece(g2d, piece, x, y);
+            }
         }
     }
 
