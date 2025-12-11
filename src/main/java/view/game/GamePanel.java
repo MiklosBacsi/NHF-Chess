@@ -15,11 +15,19 @@ public class GamePanel extends JPanel {
     private final BoardPanel boardPanel;
     private final JLabel gameModeLabel;
 
+    // --- NAVIGATION FIELDS ---
+    private final JButton backButton;           // The button component
+    private final Runnable defaultBackAction;   // Takes us to Main Menu
+    private Runnable currentBackAction;         // The logic currently assigned to the button
+
     /**
      * Constructor that creates the board and other items.
-     * @param onBack back to the main menu button's action
+     * @param onBackToMenu back to the main menu button's action
      */
-    public GamePanel(Runnable onBack) {
+    public GamePanel(Runnable onBackToMenu) {
+        this.defaultBackAction = onBackToMenu;
+        this.currentBackAction = onBackToMenu; // Default state
+
         setLayout(new BorderLayout());
         setBackground(new Color(60, 60, 60));
 
@@ -30,13 +38,24 @@ public class GamePanel extends JPanel {
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 0, 10));
 
         // Define a fixed size for the navigation elements
-        Dimension navSize = new Dimension(160, 40);
+        Dimension navSize = new Dimension(170, 40);
 
         // Create the menu button
-        JButton backButton = new JButton("Back to Main Menu");
+        backButton = new JButton("Back to Main Menu");
         backButton.setPreferredSize(navSize); // Set the fixed size
         backButton.setFocusPainted(false);
-        backButton.addActionListener(e -> onBack.run());
+
+        // Dynamic Listener
+        backButton.addActionListener(e -> {
+            // Stop the game logic first
+            stopGame();
+
+            // Run whatever action is currently assigned
+            if (currentBackAction != null) {
+                currentBackAction.run();
+            }
+        });
+
         topPanel.add(backButton, BorderLayout.WEST);
 
         // Create the Top Center Label
@@ -81,6 +100,15 @@ public class GamePanel extends JPanel {
         // Update Title text
         setGameModeText("Current Mode: " + modeName);
 
+        // Reset Action
+        this.currentBackAction = defaultBackAction;
+
+        // Reset Visuals
+        if (backButton != null) {
+            backButton.setText("Back to Main Menu");
+            backButton.setBackground(null); // Reset color
+        }
+
         // Reset Board and Rules
         boardPanel.setupGame(modeName, timeSettings);
     }
@@ -101,6 +129,25 @@ public class GamePanel extends JPanel {
         setGameModeText("Replay: " + record.variant());
 
         // Delegate logic to the board
+        boardPanel.startReplay(record);
+    }
+
+    /**
+     * Starts the replay of the chosen saved game from the Game History.
+     * @param record a saved chess match
+     * @param onBackToHistory action that takes us back to the Game History panel
+     */
+    public void startReplay(GameRecord record, Runnable onBackToHistory) {
+        setGameModeText("Replay: " + record.variant());
+
+        // Update Action
+        this.currentBackAction = onBackToHistory;
+
+        // Update Visuals
+        if (backButton != null) {
+            backButton.setText("Back to Game History");
+        }
+
         boardPanel.startReplay(record);
     }
 }

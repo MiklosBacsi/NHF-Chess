@@ -198,7 +198,11 @@ public class MainFrame extends JFrame {
 
                 (GameRecord record) -> {
                     controller.showScene(GameController.GAME);
-                    gamePanel.startReplay(record);
+
+                    gamePanel.startReplay(
+                            record,
+                            () -> controller.showScene(GameController.HISTORY)
+                    );
                 }
         );
         historyPanel.refresh(); // Load data immediately
