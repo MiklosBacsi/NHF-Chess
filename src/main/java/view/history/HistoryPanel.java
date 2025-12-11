@@ -124,7 +124,7 @@ public class HistoryPanel extends JPanel {
                 String date = record.date().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
                 setText(String.format(" %-15s | %-20s | %s", record.variant(), date, record.result()));
             }
-            if (isSelected) setBackground(new Color(70, 100, 70));
+            if (isSelected) setBackground(new Color(211, 73, 0));
             else setBackground(index % 2 == 0 ? new Color(50, 50, 50) : new Color(60, 60, 60));
             return this;
         }

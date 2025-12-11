@@ -1406,10 +1406,14 @@ public class BoardPanel extends JPanel {
         // --- UI: Check Game Over Conditions (Popups) ---
 
         // Chaturaji Game Over
-        if (gameRules instanceof ChaturajiVariant) {
+        if (gameRules instanceof ChaturajiVariant chaturajiRules) {
+            // Last Player Standing
             if (board.getAlivePlayerCount() <= 1) {
-                isGameOver = true;
-                printChaturajiStandings();
+                printChaturajiStandings("Only 1 player alive! ");
+            }
+            // Impossible to Catch Up in Points
+            else if (chaturajiRules.isImpossibleToCatchUp(board)) {
+                printChaturajiStandings("Impossible to catch up to leader! ");
             }
         }
         // King Capture (Duck/Fog)
@@ -1537,8 +1541,9 @@ public class BoardPanel extends JPanel {
 
     /**
      * Helper to print scores and winners in Chaturaji, and save the game.
+     * @param msg some extra information of how the game was finished
      */
-    private void printChaturajiStandings() {
+    private void printChaturajiStandings(String msg) {
         // Lock the game
         isGameOver = true;
 
@@ -1566,6 +1571,7 @@ public class BoardPanel extends JPanel {
 
         // Construct the winner string
         StringBuilder winnerMsg = new StringBuilder();
+        winnerMsg.append(msg);
         if (winners.size() == 1) {
             winnerMsg.append("WINNER: ").append(winners.getFirst());
         } else {

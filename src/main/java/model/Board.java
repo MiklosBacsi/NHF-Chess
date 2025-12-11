@@ -6,6 +6,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
 
 /**
  * This class represents the chess board and stores its properties.
@@ -246,6 +248,18 @@ public class Board {
     }
 
     /**
+     * Helper to get highest score.
+     * @return highest score
+     */
+    public int getHighestScore() {
+        return scores.values()
+                .stream()
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(0);
+    }
+
+    /**
      * Kills player (e.g. his king has been captured).
      * @param color color of the player we want to "kill"
      */
@@ -289,6 +303,23 @@ public class Board {
      */
     public boolean isPlayerDead(PieceColor color) {
         return deadPlayers.contains(color);
+    }
+
+    /**
+     * Returns the players who are still alive.
+     * @return list of the players alive (their colors)
+     */
+    public List<PieceColor> getAlivePlayers() {
+        List<PieceColor> alive = new ArrayList<>();
+        PieceColor[] all = {PieceColor.RED, PieceColor.BLUE, PieceColor.YELLOW, PieceColor.GREEN};
+
+        for (PieceColor p : all) {
+            // Check if player is part of the game (has a score entry) and is not dead
+            if (scores.containsKey(p) && !deadPlayers.contains(p)) {
+                alive.add(p);
+            }
+        }
+        return alive;
     }
 
     /**

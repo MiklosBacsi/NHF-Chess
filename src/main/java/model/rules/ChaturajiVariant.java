@@ -208,4 +208,80 @@ public class ChaturajiVariant implements GameVariant {
     public boolean isDrawBy50MoveRule(Board board) {
         return false;
     }
+
+    /**
+     * The game automatically ends if it's only possible for 1 player to win.
+     * This is a nice feature, so players will not have to player a boring and destined endgame.
+     * @param board board to check on
+     * @return if it's impossible to catch up for a players (--> end game)
+     */
+    public boolean isImpossibleToCatchUp(Board board) {
+        // Only check if exactly 2 players are alive
+        // If < 2 players alive --> the game ends
+        // If > 2 players alive --> theoretically infinitely many points could be collected by checking kings.
+        List<PieceColor> alive = board.getAlivePlayers();
+        if (alive.size() != 2) return false;
+
+        PieceColor p1 = alive.get(0);
+        PieceColor p2 = alive.get(1);
+        int score1 = board.getScore(p1);
+        int score2 = board.getScore(p2);
+
+        int highestScore = board.getHighestScore(); // of all (even dead) players
+
+        // If scores are equal, no one is mathematically eliminated yet
+        if (score1 == score2 && score1 == highestScore) return false;
+
+        // Determine Leader and Chaser
+        PieceColor leader = (score1 >= score2) ? p1 : p2;
+        PieceColor chaser = (score1 < score2) ? p1 : p2;
+        int leaderScore = Math.max(score1, score2);
+        int chaserScore = Math.min(score1, score2);
+
+        // The player with the most points is dead, but can still win
+        if (leaderScore < highestScore) {
+            // We need to check for both loosing pieces, maybe the one with a lower score can capture more pieces
+
+            int maxPossibleScore1 = leaderScore + pointsPossiblyBeCollectedFromBoard(board, leader);
+            int maxPossibleScore2 = chaserScore + pointsPossiblyBeCollectedFromBoard(board, chaser);
+
+            return Math.max(maxPossibleScore1, maxPossibleScore2) < highestScore;
+        }
+        // The player with the highest score is alive
+        else {
+            int maxPossibleChaserScore = chaserScore + pointsPossiblyBeCollectedFromBoard(board, chaser);
+
+            // If max possible is still less than leader's current score --> Game Over
+            return maxPossibleChaserScore < leaderScore;
+        }
+    }
+
+    /**
+     * Helper to determine how many points a player can collect by capturing all enemy pieces.
+     * @param board board to check on
+     * @param attacker color of the attacker
+     * @return sum of the value of all the pieces
+     */
+    private int pointsPossiblyBeCollectedFromBoard(Board board, PieceColor attacker) {
+        int potentialPoints = 0;
+
+        for (int r = 0; r < 8; r++) {
+            for (int c = 0; c < 8; c++) {
+                Piece piece = board.getPiece(r, c);
+                if (piece == null) continue;
+
+                PieceColor color = piece.getColor();
+
+                // Value of remaining pieces
+                if (color != attacker && color != PieceColor.GREY) {
+                    potentialPoints += getPieceValue(piece.getType());
+                }
+                if (color == PieceColor.GREY && piece.getType() == PieceType.KING) {
+                    potentialPoints += 3;
+                }
+            }
+        }
+        // if king was captured --> score was incremented but king still on board --> reduce points by 3 to get correct score
+        return potentialPoints;
+    }
 }
