@@ -88,7 +88,7 @@ public class GameController {
             <h3>Version 1.0</h3>
             <p>An amazing program that allows you to play chess variants locally with your friends, your cat (or with yourself),
             and you can analyze the matches manually with the help of annotations!</p>
-            <p>The Game History offers you a memorable experience as you can replay you previous matches (with the arrows),
+            <p>The Game History offers you a memorable experience as you can replay your previous matches (with ← and →),
             and you can even see the game from the perspective of other players!</p>
             <br><b>Supported Variants:</b><br>
             Classical • Fog of War • Duck Chess<br>
@@ -159,8 +159,8 @@ public class GameController {
      */
     public String getDuckChessRules() {
         return "<h2>Duck Chess</h2><p>After each move, a neutral duck is placed on an empty square, which blocks that square. " +
-            "The duck cannot be captured or moved through, and it has to be placed on a different square, than it previously has been.</p>" +
-            "<p>There is no check or checkmate, you can win by capturing your enemy's king. The stalemated players wins!</p>";
+            "The duck cannot be captured or moved through, and it has to be placed on a different square than it previously was.</p>" +
+            "<p>There is no check or checkmate; you can win by capturing your enemy's king. The stalemated players wins!</p>";
     }
 
     /**
@@ -168,7 +168,7 @@ public class GameController {
      */
     public String getCrazyhouseRules() {
         return "<h2>Crazyhouse</h2><p>When capturing a piece of the enemy, it moves into our reserve. " +
-            "Instead of making a move, you can choose to take a piece out of the reserve, " +
+            "Instead of making a move, you can choose to take a piece out of the reserve " +
             "and drop it back onto the board, in an empty square, but now as your piece.</p>" +
             "<p>The only restriction is that pawns cannot be dropped to the first and last rank.</p>";
     }
@@ -177,10 +177,10 @@ public class GameController {
      * @return guide for playing the Chaturaji variant (HTML format)
      */
     public String getChaturajiRules() {
-        return "<h2>Chaturaji</h2><p>Ancient 4-player Indian chess variant in which the goal is to collect to most points.</p>" +
-            "<p>Each player has 4 pawns (do not have initial double-step), a king, a bishop, a knight, and a sail boat. The sail boat moves the same way as a rock, but cannot castle.<br>" +
+        return "<h2>Chaturaji</h2><p>An ancient 4-player Indian chess variant in which the goal is to collect the most points.</p>" +
+            "<p>Each player has 4 pawns (do not have initial double-step), a king, a bishop, a knight, and a sailboat. The sailboat moves the same way as a rock, but cannot castle.<br>" +
             "Adjacent players move in perpendicular directions to each other, which introduces a twist in strategy. The order of moving is clockwise.</p>" +
-            "<p>Kings can step into checks, and they are not obliged to block them, thus they can be captured.<br>" +
+            "<p>Kings can step into checks, and they are not obliged to block them; thus, they can be captured.<br>" +
             "If a player's king is captured, he resigns or his time runs out, his rounds will be automatically skipped, but his pieces will remain on the board with grey colour, " +
             "which can be captured for +0 points. If the king stays on the board, its colour will be unchanged, and it can be captured for +3 points.<br>" +
             "The final player to stay alive will receive +3 points for every uncaptured enemy king remaining on the board.</p>" +
@@ -190,19 +190,28 @@ public class GameController {
                 "<li>3 points: capturing a king or a knight</li>" +
                 "<li>5 points: capturing a bishop or a sail boat; simultaneously checking 3 kings</li>" +
             "</ul></p>" +
-            "<p>The game (automatically) ends, if 3 kings are captured, or if it is possible for only one player to win (calculated from points).</p>" +
-            "<p>The player with the most points wins, even if his king has been captured, or he resigned.</p>";
+            "<p>The game (automatically) ends if 3 kings are captured, or if it is possible for only one player to win (calculated from points).</p>" +
+            "<p>The player with the most points wins, even if his king has been captured or he resigned.</p>";
     }
 
     /**
      * @return guide for using the chess clock (HTML format)
      */
     public String getClockGuide() {
-        return "<h2>Chess Clock Guide</h2><p>Each player is given the equal amount of time at the start of the game, and only the active player's time is decreasing. " +
-            "Before beginning the match, you must choose from a chess clock preset or you set a custom one yourself.</p>" +
+        return "<h2>Chess Clock Guide</h2><p>Each player is given an equal amount of time at the start of the game, and only the active player's time is decreasing. " +
+            "Before beginning the match, you must choose from a chess clock preset or set a custom one yourself.</p>" +
             "<p><strong>minutes | seconds</strong> or just <strong>minutes</strong><br>" +
             "Minutes: integer between 1 and 30, the initial time.<br>" +
             "Seconds: integer between 0 and 30, that many seconds are added to your time after making a move.</p>" +
             "<p>If your time runs out, you lose/die.</p>";
+    }
+
+    /**
+     * @return guide for using the annotations (HTML format)
+     */
+    public String getAnnotationGuide() {
+        return "<h2>Annotation Guide</h2><p>We can navigate through the previous steps (by pressing down the ← and → arrows on your keyboard), and draw amazing annotations on the board that help us analyze moves!</p>" +
+                "<p>To draw annotations, use the right mouse button! You can draw arrows or just highlight squares, but feel free to experiment with several colors!</p>" +
+                "<p>By holding down the Alt, Ctrl or Shift keys, you can change the color of the annotations while drawing!<p>";
     }
 }

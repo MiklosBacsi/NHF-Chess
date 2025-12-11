@@ -1,5 +1,5 @@
 ## Status:
-kb. 90%-ig van kesz :c
+kb. 95%-ig van kesz :)
 
 ### Project:
 https://github.com/MiklosBacsi/NHF-Chess

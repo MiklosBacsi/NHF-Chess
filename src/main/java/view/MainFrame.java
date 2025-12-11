@@ -91,15 +91,20 @@ public class MainFrame extends JFrame {
     private JMenuBar createMenuBar() {
         JMenuBar menuBar = new JMenuBar();
 
-        // File → Exit
+        // --- File → Exit ---
         JMenu fileMenu = new JMenu("File");
+
+        // Exit
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.addActionListener(e -> System.exit(0));
         fileMenu.add(exitItem);
         menuBar.add(fileMenu);
 
-        // Game → New Game + Main Menu
+
+        // --- Game → New Game + Main Menu ---
         JMenu gameMenu = new JMenu("Game");
+
+        // New Game
         JMenu newGameMenu = new JMenu("New Game");
         for (String mode : GameController.MODES) {
             JMenuItem item = new JMenuItem(mode);
@@ -109,18 +114,23 @@ public class MainFrame extends JFrame {
         gameMenu.add(newGameMenu);
         gameMenu.addSeparator();
 
+        // Main Menu
         JMenuItem mainMenuItem = new JMenuItem("Main Menu");
         mainMenuItem.addActionListener(e -> controller.showScene(GameController.MENU));
         gameMenu.add(mainMenuItem);
         menuBar.add(gameMenu);
 
-        // View → Theme + Game History
+
+        // --- View → Theme + Game History ---
         JMenu viewMenu = new JMenu("View");
 
+        // Game History
         JMenuItem historyItem = new JMenuItem("Game History");
         historyItem.addActionListener(e -> controller.showScene(GameController.HISTORY));
         viewMenu.add(historyItem);
+        viewMenu.addSeparator();
 
+        // Theme
         JMenu themeMenu = new JMenu("Theme");
         ButtonGroup themeGroup = new ButtonGroup();
         for (BoardTheme theme : BoardTheme.ALL_THEMES) {
@@ -134,18 +144,21 @@ public class MainFrame extends JFrame {
             themeMenu.add(themeItem);
         }
         viewMenu.add(themeMenu);
-        viewMenu.addSeparator();
 
         menuBar.add(viewMenu);
 
-        // Help → About + How to Play
+
+        // --- Help → About + How to Play ---
         JMenu helpMenu = new JMenu("Help");
+
+        // About
         JMenuItem aboutItem = new JMenuItem("About Chess Variants");
         aboutItem.setAccelerator(KeyStroke.getKeyStroke("F1"));
         aboutItem.addActionListener(e -> controller.openAboutDialog());
         helpMenu.add(aboutItem);
         helpMenu.addSeparator();
 
+        // How to Play
         JMenu howToPlayMenu = new JMenu("How to Play");
         String[] helpTitles = {"Classical Chess", "Fog of War", "Duck Chess", "Crazyhouse", "Chaturaji (4-player)"};
         for (int i = 0; i < helpTitles.length; i++) {
@@ -158,9 +171,17 @@ public class MainFrame extends JFrame {
         helpMenu.add(howToPlayMenu);
         helpMenu.addSeparator();
 
+        // Chess Clock
         JMenuItem clockItem = new JMenuItem("Chess Clock Guide");
         clockItem.addActionListener(e -> controller.openHelpDialog("Chess Clock Guide", controller.getClockGuide()));
         helpMenu.add(clockItem);
+        menuBar.add(helpMenu);
+        helpMenu.addSeparator();
+
+        // Annotation
+        JMenuItem annotationItem = new JMenuItem("Annotation Guide");
+        annotationItem.addActionListener(e -> controller.openHelpDialog("Annotation Guide", controller.getAnnotationGuide()));
+        helpMenu.add(annotationItem);
         menuBar.add(helpMenu);
 
         return menuBar;

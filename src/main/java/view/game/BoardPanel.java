@@ -3,6 +3,7 @@ package view.game;
 import model.*;
 import model.pieces.*;
 import model.rules.*;
+import view.game.annotation.*;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -51,6 +52,14 @@ public class BoardPanel extends JPanel {
     private List<Move> currentLegalMoves = null; // All the squares a piece can legally move to
     private Piece selectedPiece = null;
     private List<Move> selectedLegalMoves = null;
+
+    // --- ANNOTATION STATE ---
+    // Maps Player -> (Move Index -> Layer)
+    private final Map<PieceColor, Map<Integer, AnnotationLayer>> playerAnnotationHistory = new HashMap<>();
+    // Mouse Interaction State
+    private Point rightClickStartSquare = null; // Model Coords
+    private Point currentDragSquare = null;     // Model Coords (for live preview)
+    private Color dragArrowColor; // for live preview
 
     // --- Visuals ---
     private BoardTheme currentTheme = BoardTheme.BROWN;
@@ -165,8 +174,10 @@ public class BoardPanel extends JPanel {
     /**
      * It creates a new game with the chosen variant.
      * @param mode determines the type of the game variant
+     * @param timeSettings properties of chess clock
+     * @param clearAnnotations if we should clear the annotations (must not when replaying previous steps)
      */
-    public void setupGame(String mode, TimeSettings timeSettings) {
+    public void setupGame(String mode, TimeSettings timeSettings, boolean clearAnnotations) {
         this.currentModeName = mode;
         this.isReplayMode = false;
         isInGameReview = false;
@@ -248,6 +259,9 @@ public class BoardPanel extends JPanel {
         drawOfferPending = false;
         btnDraw.setText("Draw");
         btnDraw.setEnabled(true);
+        if (clearAnnotations) {
+            playerAnnotationHistory.clear();
+        }
 
         requestFocusInWindow(); // enable keyboard
 
@@ -592,7 +606,15 @@ public class BoardPanel extends JPanel {
         // Draw Move Hints (Dots and Rings)
         drawMoveHints(g2d, activePiece, activeMoves);
 
-        // Draw a border around the whole board for a cleaner look
+        // --- DRAW ARROW ANNOTATIONS ---
+        drawArrows(g2d, startX, startY);
+
+        // Draw Preview Arrow (While Dragging)
+        if (rightClickStartSquare != null && currentDragSquare != null) {
+            drawSingleArrow(g2d, rightClickStartSquare, currentDragSquare, dragArrowColor, startX, startY);
+        }
+
+        // Draw a Border around the whole board for a cleaner look
         g2d.setColor(Color.BLACK);
         g2d.setStroke(new BasicStroke(2));
         g2d.drawRect(startX, startY, boardPixelSize, boardPixelSize);
@@ -761,6 +783,15 @@ public class BoardPanel extends JPanel {
         if (blackInCheck && blackKing != null && blackKing.getRow() == row && blackKing.getCol() == col) {
             g2d.setColor(checkHighlightColor);
             g2d.fillRect(x, y, squareSize, squareSize);
+        }
+
+        // --- DRAW SQUARE ANNOTATIONS ---
+        AnnotationLayer layer = getCurrentAnnotationLayer();
+        for (SquareAnnotation sa : layer.getSquares()) {
+            if (sa.row() == row && sa.col() == col) {
+                g2d.setColor(sa.color().getAwtColor());
+                g2d.fillRect(x, y, squareSize, squareSize);
+            }
         }
 
         // --- Draw Piece (if it's not being dragged) ---
@@ -1383,6 +1414,128 @@ public class BoardPanel extends JPanel {
     }
 
     /**
+     * Helper to determine current view index for annotations.
+     * @return current view index
+     */
+    private int getCurrentViewIndex() {
+        if (isReplayMode) {
+            return currentReplayIndex;
+        }
+        if (isInGameReview) {
+            return reviewIndex;
+        }
+        // Live Game
+        return board.getMoveHistory().size();
+    }
+
+    /**
+     * Helper to get annotations for move to be reviewed.
+     * @return annotation layer of move (for the correct player)
+     */
+    private AnnotationLayer getCurrentAnnotationLayer() {
+        int moveIdx = getCurrentViewIndex();
+        PieceColor owner;
+
+        if (isReplayMode) {
+            // Game History (Replay from file) -> Use a shared "Spectator" layer
+            owner = PieceColor.SPECIAL;
+        } else {
+            // Live Game (or In-Game Review) -> Use the current viewer's layer
+            owner = viewPerspective;
+        }
+
+        // Get (or create) the history map for this specific player
+        Map<Integer, AnnotationLayer> history =
+                playerAnnotationHistory.computeIfAbsent(owner, k -> new HashMap<>());
+
+        // Get (or create) the layer for this specific move
+        return history.computeIfAbsent(moveIdx, k -> new AnnotationLayer());
+    }
+
+    /**
+     * Helper to draw arrow annotations on board.
+     * @param g2d Graphics2D to draw on
+     * @param startX X mouse position of arrow's start
+     * @param startY Y mouse position of arrow's start
+     */
+    private void drawArrows(Graphics2D g2d, int startX, int startY) {
+        AnnotationLayer layer = getCurrentAnnotationLayer();
+        for (ArrowAnnotation arrow : layer.getArrows()) {
+            drawSingleArrow(g2d,
+                    new Point(arrow.startCol(), arrow.startRow()),
+                    new Point(arrow.endCol(), arrow.endRow()),
+                    arrow.color().getAwtColor(),
+                    startX, startY);
+        }
+    }
+
+    /**
+     * Helper to draw a single arrow annotation on board.
+     * @param g2d Graphics2D to draw on
+     * @param startModel X mouse position of arrow's end
+     * @param endModel Y mouse position of arrow's end
+     * @param color color of the arrow
+     * @param sX X mouse position of arrow's start
+     * @param sY Y mouse position of arrow's start
+     */
+    private void drawSingleArrow(Graphics2D g2d, Point startModel, Point endModel, Color color, int sX, int sY) {
+        // Don't draw arrow in one place
+        if (startModel.x == endModel.x && startModel.y == endModel.y) {
+            return;
+        }
+
+        // Convert Model -> Visual
+        int startX = sX + (getVisualCol(startModel.y, startModel.x) * squareSize) + (squareSize / 2);
+        int startY = sY + (getVisualRow(startModel.y, startModel.x) * squareSize) + (squareSize / 2);
+        int endX = sX + (getVisualCol(endModel.y, endModel.x) * squareSize) + (squareSize / 2);
+        int endY = sY + (getVisualRow(endModel.y, endModel.x) * squareSize) + (squareSize / 2);
+
+        g2d.setColor(color);
+        g2d.setStroke(new BasicStroke(squareSize * 0.15f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+        // Math for arrow head
+        double angle = Math.atan2(endY - startY, endX - startX);
+        int arrowHeadSize = squareSize / 3;
+
+        // Draw Line (We stop slightly short of the center so the head looks nice)
+        int shortenedEndX = (int) (endX - (arrowHeadSize * 0.8) * Math.cos(angle));
+        int shortenedEndY = (int) (endY - (arrowHeadSize * 0.8) * Math.sin(angle));
+
+        g2d.drawLine(startX, startY, shortenedEndX, shortenedEndY);
+
+        // Draw Triangle Head
+        Polygon head = new Polygon();
+        head.addPoint(endX, endY);
+        head.addPoint((int) (endX - arrowHeadSize * Math.cos(angle - Math.PI / 6)), (int) (endY - arrowHeadSize * Math.sin(angle - Math.PI / 6)));
+        head.addPoint((int) (endX - arrowHeadSize * Math.cos(angle + Math.PI / 6)), (int) (endY - arrowHeadSize * Math.sin(angle + Math.PI / 6)));
+        g2d.fillPolygon(head);
+    }
+
+    /**
+     * Helper to get color of square annotation (determined by key press down).
+     * @param e mouse (+ keyboard) event for determining color of annotation
+     * @return color of the annotation
+     */
+    private AnnotationColor getSquareColor(MouseEvent e) {
+        if (e.isAltDown()) return AnnotationColor.BLUE;
+        if (e.isControlDown()) return AnnotationColor.ORANGE;
+        if (e.isShiftDown()) return AnnotationColor.GREEN;
+        return AnnotationColor.RED;
+    }
+
+    /**
+     * Helper to get color of arrow annotation (determined by key press down).
+     * @param e mouse (+ keyboard) event for determining color of annotation
+     * @return color of the annotation
+     */
+    private AnnotationColor getArrowColor(MouseEvent e) {
+        if (e.isAltDown()) return AnnotationColor.BLUE;
+        if (e.isControlDown()) return AnnotationColor.RED;
+        if (e.isShiftDown()) return AnnotationColor.GREEN;
+        return AnnotationColor.ORANGE;
+    }
+
+    /**
      * Stops the Chess Clock.
      */
     public void stopGame() {
@@ -1667,7 +1820,7 @@ public class BoardPanel extends JPanel {
      */
     public void startReplay(GameRecord record) {
         // Set the board up like a new game of that variant
-        setupGame(record.variant(), null); // null clock
+        setupGame(record.variant(), null, true); // null clock
 
         // Set Replay State
         isReplayMode = true;
@@ -1721,7 +1874,7 @@ public class BoardPanel extends JPanel {
                 int targetIndex = currentReplayIndex - 1;
 
                 // Reset Board to Start
-                setupGame(currentModeName, null);
+                setupGame(currentModeName, null, false);
 
                 // Restore Replay State
                 isReplayMode = true;
@@ -2065,7 +2218,35 @@ public class BoardPanel extends JPanel {
          */
         @Override
         public void mousePressed(MouseEvent e) {
-            requestFocusInWindow();// enable mouse
+            requestFocusInWindow(); // enable mouse
+
+            // --- RIGHT CLICK START ---
+            if (SwingUtilities.isRightMouseButton(e)) {
+                Point coords = getBoardCoordinates(e.getX(), e.getY());
+                if (coords != null) {
+                    rightClickStartSquare = coords;
+                    currentDragSquare = coords; // Initialize drag
+                    repaint();
+                }
+                return; // Stop processing (don't pick up pieces)
+            }
+
+            // --- LEFT CLICK CLEAR ---
+            if (SwingUtilities.isLeftMouseButton(e)) {
+                Point coords = getBoardCoordinates(e.getX(), e.getY());
+
+                // If clicked outside board, OR clicked empty square -> Clear Annotations
+                boolean clickedPiece = false;
+                if (coords != null) {
+                    if (board.getPiece(coords.y, coords.x) != null) clickedPiece = true;
+                }
+
+                if (!clickedPiece) {
+                    getCurrentAnnotationLayer().clear();
+                    repaint();
+                    // Don't return, allow deselection logic below to run
+                }
+            }
 
             // Block input if Game Over OR Reviewing the past
             if (isGameOver && !isInGameReview) return;
@@ -2152,6 +2333,17 @@ public class BoardPanel extends JPanel {
          */
         @Override
         public void mouseDragged(MouseEvent e) {
+            // --- RIGHT DRAG PREVIEW ---
+            if (SwingUtilities.isRightMouseButton(e) && rightClickStartSquare != null) {
+                Point coords = getBoardCoordinates(e.getX(), e.getY());
+                if (coords != null) {
+                    currentDragSquare = coords;
+                    repaint();
+                }
+                dragArrowColor = getArrowColor(e).getAwtColor();
+                return;
+            }
+
             if (draggedPiece != null) {
                 dragX = e.getX();
                 dragY = e.getY();
@@ -2169,6 +2361,32 @@ public class BoardPanel extends JPanel {
          */
         @Override
         public void mouseReleased(MouseEvent e) {
+            // --- RIGHT CLICK FINISH ---
+            if (SwingUtilities.isRightMouseButton(e) && rightClickStartSquare != null) {
+                Point endCoords = getBoardCoordinates(e.getX(), e.getY());
+
+                if (endCoords != null) {
+                    // Determine Color based on Modifiers
+                    AnnotationLayer layer = getCurrentAnnotationLayer();
+
+                    if (rightClickStartSquare.equals(endCoords)) {
+                        // Same Square -> Toggle Highlight
+                        layer.toggleSquare(endCoords.y, endCoords.x, getSquareColor(e));
+                    } else {
+                        dragArrowColor = getArrowColor(e).getAwtColor();
+                        // Different Squares -> Toggle Arrow
+                        layer.toggleArrow(rightClickStartSquare.y, rightClickStartSquare.x,
+                                endCoords.y, endCoords.x, getArrowColor(e));
+                    }
+                }
+
+                // Cleanup
+                rightClickStartSquare = null;
+                currentDragSquare = null;
+                repaint();
+                return;
+            }
+
             if (draggedPiece != null) {
                 Point coords = getBoardCoordinates(e.getX(), e.getY());
                 boolean moveExecuted = false;

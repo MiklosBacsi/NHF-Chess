@@ -110,7 +110,7 @@ public class GamePanel extends JPanel {
         }
 
         // Reset Board and Rules
-        boardPanel.setupGame(modeName, timeSettings);
+        boardPanel.setupGame(modeName, timeSettings, true);
     }
 
     /**
