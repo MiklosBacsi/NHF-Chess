@@ -27,8 +27,10 @@ public class HistoryPanel extends JPanel {
     public HistoryPanel(Runnable onBack, Consumer<GameRecord> onReplay) {
         this.onReplay = onReplay;
 
+        Color darkBackground = new Color(40, 40, 40);
+
         setLayout(new BorderLayout());
-        setBackground(new Color(40, 40, 40));
+        setBackground(darkBackground);
 
         // HEADER
         JLabel title = new JLabel("GAME HISTORY", SwingConstants.CENTER);
@@ -40,14 +42,15 @@ public class HistoryPanel extends JPanel {
         // LIST
         listModel = new DefaultListModel<>();
         gameList = new JList<>(listModel);
-        gameList.setBackground(new Color(40, 40, 40));
+        gameList.setBackground(darkBackground);
         gameList.setForeground(Color.WHITE);
         gameList.setFont(new Font("Monospaced", Font.PLAIN, 16));
         gameList.setCellRenderer(new GameListRenderer());
 
         JScrollPane scroll = new JScrollPane(gameList);
         scroll.setBorder(BorderFactory.createEmptyBorder(10, 50, 10, 50));
-        scroll.getViewport().setBackground(new Color(40, 40, 40));
+        scroll.getViewport().setBackground(darkBackground);
+        scroll.setBackground(new Color(38, 38, 38));
         add(scroll, BorderLayout.CENTER);
 
         // BUTTONS
@@ -58,11 +61,9 @@ public class HistoryPanel extends JPanel {
         backBtn.addActionListener(e -> onBack.run());
 
         JButton deleteBtn = createButton("Delete Selected");
-        deleteBtn.setBackground(new Color(200, 50, 50));
         deleteBtn.addActionListener(e -> deleteSelected());
 
         JButton replayBtn = createButton("Replay Game");
-        replayBtn.setBackground(new Color(50, 150, 200));
         replayBtn.addActionListener(e -> replaySelected());
 
         btnPanel.add(backBtn);

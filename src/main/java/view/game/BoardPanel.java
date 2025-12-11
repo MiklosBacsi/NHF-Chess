@@ -112,8 +112,6 @@ public class BoardPanel extends JPanel {
         // Perspective Button
         switchPerspectiveBtn = new JButton("View: Dynamic");
         switchPerspectiveBtn.setFocusable(false); // Don't steal focus from KeyListener
-        switchPerspectiveBtn.setBackground(new Color(60, 60, 60));
-        switchPerspectiveBtn.setForeground(Color.WHITE);
         switchPerspectiveBtn.setBorder(BorderFactory.createLineBorder(Color.GRAY));
         switchPerspectiveBtn.setVisible(false); // Hidden by default
         switchPerspectiveBtn.addActionListener(e -> cycleReplayPerspective());
@@ -122,16 +120,12 @@ public class BoardPanel extends JPanel {
         // --- RESIGN BUTTON ---
         btnResign = new JButton("Resign");
         btnResign.setFocusable(false);
-        btnResign.setBackground(new Color(200, 60, 60));
-        btnResign.setForeground(Color.WHITE);
         btnResign.addActionListener(e -> onResignClicked());
         add(btnResign);
 
         // --- DRAW BUTTON ---
         btnDraw = new JButton("Draw");
         btnDraw.setFocusable(false);
-        btnDraw.setBackground(new Color(100, 100, 150));
-        btnDraw.setForeground(Color.WHITE);
         btnDraw.addActionListener(e -> onDrawClicked());
         add(btnDraw);
 
