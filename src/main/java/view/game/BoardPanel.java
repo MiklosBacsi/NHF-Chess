@@ -78,8 +78,8 @@ public class BoardPanel extends JPanel {
             PieceType.PAWN, PieceType.KNIGHT, PieceType.BISHOP, PieceType.ROOK, PieceType.QUEEN
     };
     // UI Buttons
-    private JButton btnResign;
-    private JButton btnDraw;
+    private final JButton btnResign;
+    private final JButton btnDraw;
     // --- For Game History ---
     private String currentModeName = "Classical";
     private boolean isReplayMode = false;
@@ -665,14 +665,21 @@ public class BoardPanel extends JPanel {
         int y = startY + (visualRow * squareSize);
 
         // VISIBILITY CHECK
-        // Point uses x=col, y=row
-        boolean isVisible = visibleSquares.contains(new Point(col, row));
+        boolean isVisible = true;
 
-        // If Blind Mode is ON, everything is hidden
-        if (isBlindMode) isVisible = false;
-
-        // If not a Fog game, everything is visible
-        if (!(gameRules instanceof FogOfWarVariant)) isVisible = true;
+        // Only relevant in Fog of War
+        if (gameRules instanceof FogOfWarVariant) {
+            // If Blind Mode is ON, everything is hidden
+            if (isBlindMode) {
+                isVisible = false;
+            }
+            // Reveal board at last move
+            else if (!(isGameOver && !isInGameReview && !isReplayMode)
+                    && !(isReplayMode && currentReplayIndex == replayMoves.size())) {
+                // Standard FoW visibility
+                isVisible = visibleSquares.contains(new Point(col, row));
+            }
+        }
 
 
         // Determine color of square
@@ -1195,6 +1202,7 @@ public class BoardPanel extends JPanel {
     private void showGameOverDialog(String message) {
         // Lock the game
         isGameOver = true;
+        isBlindMode = false;
 
         // Clear visual artifacts (dots, highlights)
         clearSelections();
@@ -1593,9 +1601,9 @@ public class BoardPanel extends JPanel {
         }
 
         // Fog of War UI
-        if (gameRules instanceof FogOfWarVariant && !isReplayMode &&
+        if (gameRules instanceof FogOfWarVariant && !isReplayMode && !isGameOver &&
                 (move.capturedPiece() == null || move.capturedPiece().getType() != PieceType.KING)) {
-            // Only show Pass Turn dialog if NOT in replay mode
+            // Only show Pass Turn dialog if NOT in replay mode and the game isn't over
 
 
             // PAUSE CLOCK
