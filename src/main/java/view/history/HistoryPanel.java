@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 
 /**
  * This class is responsible for controlling the program
+ * @see view.MainFrame
  * @author Miklós Bácsi
  */
 public class HistoryPanel extends JPanel {

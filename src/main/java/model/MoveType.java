@@ -2,6 +2,8 @@ package model;
 
 /**
  * This enum represents the type of moves possible.
+ * @see Move
+ * @see GameVariant
  * @author Miklós Bácsi
  */
 public enum MoveType {

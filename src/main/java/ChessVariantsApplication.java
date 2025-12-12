@@ -1,9 +1,15 @@
 import controller.GameController;
+import model.GameVariant;
 
 import javax.swing.*;
 
 /**
  * This class represents and starts the program.
+ * @see GameVariant
+ * @see view.game.BoardPanel
+ * @see GameVariant
+ * @see view.MainFrame
+ * @see view.game.GamePanel
  * @author Miklós Bácsi
  */
 public class ChessVariantsApplication {

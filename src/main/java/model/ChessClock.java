@@ -5,6 +5,8 @@ import java.util.Map;
 
 /**
  * This class implements the Chess Clock.
+ * @see TimeSettings
+ * @see view.game.BoardPanel
  * @author Miklós Bácsi
  */
 public class ChessClock {

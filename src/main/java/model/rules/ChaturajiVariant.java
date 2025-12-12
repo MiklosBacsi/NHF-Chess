@@ -14,6 +14,7 @@ import java.util.List;
  * When a king is captured, his pieces will be dead (grey) and can be captured.
  * The rook is replaced by the sail boat, which moves the same way, but cannot castle.
  * For more details, open the help dialog!
+ * @see GameVariant
  * @author Miklós Bácsi
  */
 public class ChaturajiVariant implements GameVariant {

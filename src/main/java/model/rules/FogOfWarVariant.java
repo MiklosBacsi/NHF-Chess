@@ -9,6 +9,8 @@ import java.util.List;
  * Rules:
  * Only the squares occupied or attacked by our pieces are visible, the others are covered in fog.
  * There is no check or checkmate. Capture the opponent’s king to win!
+ * @see GameVariant
+ * @see ClassicalVariant
  * @author Miklós Bácsi
  */
 public class FogOfWarVariant extends ClassicalVariant {

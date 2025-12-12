@@ -11,6 +11,12 @@ package model;
  * @param capturedPiece piece that was captured (null if wasn't)
  * @param isFirstMove stores if it was the first move of the game
  * @param promotionType piece that the pawn promoted to, null if there was no promotion
+ * @see MoveType
+ * @see Piece
+ * @see Board
+ * @see view.game.BoardPanel
+ * @see GameVariant
+ * @see SavedMove
  * @author Miklós Bácsi
  */
 public record Move(

@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * This class implements the piece rook in chess.
+ * @see Piece
  * @author Miklós Bácsi
  */
 public class Rook extends Piece {

@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * This class implements the piece pawn in chess.
+ * @see Piece
  * @author Miklós Bácsi
  */
 public class Pawn extends Piece {

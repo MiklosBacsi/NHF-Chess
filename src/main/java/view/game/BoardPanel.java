@@ -23,6 +23,13 @@ import java.util.ArrayList;
 /**
  * This class is responsible for the visual representation of the chess board and its pieces.
  * Furthermore, it handles user input (e.g. moving pieces).
+ * @see Board
+ * @see Move
+ * @see Piece
+ * @see GameVariant
+ * @see PieceColor
+ * @see PieceType
+ * @see view.MainFrame
  * @author Miklós Bácsi
  */
 public class BoardPanel extends JPanel {

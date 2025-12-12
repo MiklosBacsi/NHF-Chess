@@ -11,6 +11,8 @@ import java.util.ArrayList;
 
 /**
  * This class represents the chess board and stores its properties.
+ * @see Piece
+ * @see Move
  * @author Miklós Bácsi
  */
 public class Board {

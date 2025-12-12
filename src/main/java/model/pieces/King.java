@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * This class implements the piece king in chess.
+ * @see Piece
  * @author Miklós Bácsi
  */
 public class King extends Piece {

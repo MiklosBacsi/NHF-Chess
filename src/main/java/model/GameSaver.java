@@ -163,7 +163,7 @@ public class GameSaver {
      * @param key we want to extract the value of this key
      * @return value of the key
      */
-    private static String extractValue(String source, String key) {
+    static String extractValue(String source, String key) {
         // Looks for "key": "value"
         String keyPattern = "\"" + key + "\"";
         int keyStart = source.indexOf(keyPattern);
@@ -190,7 +190,7 @@ public class GameSaver {
      * @param key we want to extract its (integer) value
      * @return integer value of the key
      */
-    private static int extractInt(String source, String key) {
+    static int extractInt(String source, String key) {
         // Looks for "key": 123
         String search = "\"" + key + "\":";
         int start = source.indexOf(search);

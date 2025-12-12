@@ -2,6 +2,8 @@ package model;
 
 /**
  * This enum represents the color of a player, thus the color of his pieces.
+ * @see Piece
+ * @see view.game.BoardPanel
  * @author Miklós Bácsi
  */
 public enum PieceColor {

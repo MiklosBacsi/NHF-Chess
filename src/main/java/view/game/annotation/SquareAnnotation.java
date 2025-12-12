@@ -5,6 +5,9 @@ package view.game.annotation;
  * @param row row of the highlighted square
  * @param col column of the highlighted square
  * @param color color of the highlighted square
+ * @see AnnotationColor
+ * @see AnnotationLayer
+ * @see ArrowAnnotation
  * @author Miklós Bácsi
  */
 public record SquareAnnotation(

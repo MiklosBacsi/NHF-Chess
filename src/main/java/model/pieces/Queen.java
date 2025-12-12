@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * This class implements the piece queen in chess.
+ * @see Piece
  * @author Miklós Bácsi
  */
 public class Queen extends Piece {

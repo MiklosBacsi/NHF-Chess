@@ -5,6 +5,8 @@ import java.util.List;
 
 /**
  * This class implements the piece boat in chess, which moves the same way as the rook, but cannot castle.
+ * @see Piece
+ * @see model.rules.ChaturajiVariant
  * @author Miklós Bácsi
  */
 public class Boat extends Piece {

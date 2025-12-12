@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 
 /**
  * This class is responsible for the main menu's panel.
+ * @see view.MainFrame
  * @author Miklós Bácsi
  */
 public class MainMenuPanel extends JPanel {

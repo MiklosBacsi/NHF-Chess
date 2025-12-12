@@ -4,6 +4,9 @@ import java.util.List;
 
 /**
  * This interface represents the different chess variants.
+ * @see Piece
+ * @see Board
+ * @see view.game.BoardPanel
  * @author Miklós Bácsi
  */
 public interface GameVariant {

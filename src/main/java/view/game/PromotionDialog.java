@@ -11,6 +11,7 @@ import java.net.URL;
 
 /**
  * This class is responsible for opening the window on which we can choose which piece to promote to.
+ * @see BoardPanel
  * @author Miklós Bácsi
  */
 public class PromotionDialog extends JDialog {

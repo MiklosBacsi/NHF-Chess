@@ -10,6 +10,8 @@ import java.util.List;
  * @param date time stamp when the game was finished
  * @param result outcome of the game
  * @param moves list of the moves that make up the game
+ * @see GameSaver
+ * @see SavedMove
  * @author Miklós Bácsi
  */
 public record GameRecord(

@@ -5,6 +5,11 @@ import java.util.List;
 
 /**
  * This abstract base class represents a chess piece.
+ * @see PieceType
+ * @see PieceColor
+ * @see Move
+ * @see Board
+ * @see GameVariant
  * @author Miklós Bácsi
  */
 public abstract class Piece {

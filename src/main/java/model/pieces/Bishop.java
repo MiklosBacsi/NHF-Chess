@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * This class implements the piece bishop in chess.
+ * @see Piece
  * @author Miklós Bácsi
  */
 public class Bishop extends Piece {

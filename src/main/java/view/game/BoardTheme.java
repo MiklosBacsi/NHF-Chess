@@ -4,6 +4,7 @@ import java.awt.Color;
 
 /**
  * This class implements the various visual themes of the board.
+ * @see BoardPanel
  * @author Miklós Bácsi
  */
 public class BoardTheme {

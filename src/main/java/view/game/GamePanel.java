@@ -8,6 +8,8 @@ import java.awt.*;
 
 /**
  * This class is responsible the game panel of the program.
+ * @see BoardPanel
+ * @see view.MainFrame
  * @author Miklós Bácsi
  */
 public class GamePanel extends JPanel {

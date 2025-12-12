@@ -5,6 +5,10 @@ import java.util.Set;
 
 /**
  * This class stores the square and arrow annotations for a single move (for a single player).
+ * @see AnnotationColor
+ * @see SquareAnnotation
+ * @see ArrowAnnotation
+ * @see view.game.BoardPanel
  * @author Miklós Bácsi
  */
 public class AnnotationLayer {

@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * This class implements the Classical chess with its rules.
+ * @see GameVariant
  * @author Miklós Bácsi
  */
 public class ClassicalVariant implements GameVariant {

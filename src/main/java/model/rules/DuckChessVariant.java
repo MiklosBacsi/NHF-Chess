@@ -14,6 +14,8 @@ import java.util.List;
  * There is no check or checkmate. Capture the opponent’s king to win!
  * The stalemated player wins!
  * Invented by: Dr. Tim Paulden
+ * @see GameVariant
+ * @see ClassicalVariant
  * @author Miklós Bácsi
  */
 public class DuckChessVariant extends ClassicalVariant {

@@ -5,6 +5,8 @@ package model;
  * Format: initialMinutes | incrementSeconds
  * @param initialMinutes initial minutes
  * @param incrementSeconds that many seconds are added to the remaining time after each move of the player
+ * @see ChessClock
+ * @see view.game.GameSetupDialog
  * @author Miklós Bácsi
  */
 public record TimeSettings(int initialMinutes, int incrementSeconds) {

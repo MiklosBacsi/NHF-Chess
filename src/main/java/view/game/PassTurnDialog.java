@@ -7,6 +7,8 @@ import java.awt.*;
 
 /**
  * This class is responsible for opening the window on which we can pass the turn to the next player.
+ * @see BoardPanel
+ * @see model.rules.FogOfWarVariant
  * @author Miklós Bácsi
  */
 public class PassTurnDialog extends JDialog {

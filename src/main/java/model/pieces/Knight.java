@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * This class implements the piece knight in chess.
+ * @see Piece
  * @author Miklós Bácsi
  */
 public class Knight extends Piece {

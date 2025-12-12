@@ -6,6 +6,8 @@ import java.util.List;
 
 /**
  * This class implements the piece duck in Duck Chess variant.
+ * @see Piece
+ * @see model.rules.DuckChessVariant
  * @author Miklós Bácsi
  */
 public class Duck extends Piece {

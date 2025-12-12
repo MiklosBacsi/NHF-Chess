@@ -7,6 +7,7 @@ import java.awt.*;
 
 /**
  * Pop-up window that forces the user to choose a chess clock.
+ * @see TimeSettings
  * @author Miklós Bácsi
  */
 public class GameSetupDialog extends JDialog {

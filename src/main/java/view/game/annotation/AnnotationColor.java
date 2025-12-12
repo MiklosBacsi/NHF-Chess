@@ -4,6 +4,9 @@ import java.awt.Color;
 
 /**
  * This enum stores the colors for the annotations.
+ * @see SquareAnnotation
+ * @see ArrowAnnotation
+ * @see AnnotationLayer
  * @author Miklós Bácsi
  */
 public enum AnnotationColor {

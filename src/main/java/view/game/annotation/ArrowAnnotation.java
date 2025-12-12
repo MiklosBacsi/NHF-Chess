@@ -7,6 +7,9 @@ package view.game.annotation;
  * @param endRow end row of the arrow
  * @param endCol end column of the arrow
  * @param color color of the arrow
+ * @see AnnotationColor
+ * @see AnnotationLayer
+ * @see SquareAnnotation
  * @author Miklós Bácsi
  */
 public record ArrowAnnotation(

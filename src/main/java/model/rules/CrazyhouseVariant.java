@@ -13,6 +13,8 @@ import java.util.Map;
  * Captured enemy pieces are placed in your reserve.
  * Instead of stepping with a piece, you can grab a piece from your reserve and drop it on the board to an empty square.
  * Pawns cannot be dropped to the first and last rank.
+ * @see GameVariant
+ * @see ClassicalVariant
  * @author Miklós Bácsi
  */
 public class CrazyhouseVariant extends ClassicalVariant {
